@@ -1,4 +1,2 @@
-#!/usr/bin/env sh
-
-npm install
-npm run start
+#!/bin/sh
+npm run dev
