@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "HiverApp",
+    "slug": "hiver-app",
+    "version": "1.0.0",
+    "platforms": ["ios", "android", "web"],
+    "orientation": "portrait",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "web": {
+      "build": {
+        "babel": {
+          "include": ["@expo/webpack-config"]
+        }
+      }
+    }
+  }
+}
