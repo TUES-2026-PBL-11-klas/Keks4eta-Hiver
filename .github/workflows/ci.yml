@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install dev deps
+        run: uv sync --dev
+      - name: Run ruff linter
+        run: uv run ruff check src/
+      - name: Run mypy type checker
+        run: uv run mypy src/ --strict
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_USER: hiver
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: hiver_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install all deps
+        run: uv sync --dev
+      - name: Run tests with coverage
+        run: uv run pytest --cov=src --cov-report=xml --cov-fail-under=80
+        env:
+          DATABASE_URL: postgresql+asyncpg://hiver:test@localhost:5432/hiver_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test_secret_key_min_32_characters_long
+          STRIPE_SECRET_KEY: sk_test_dummy
+          STRIPE_WEBHOOK_SECRET: whsec_dummy
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+
+  security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Install deps
+        run: uv sync --dev
+      - name: Dependency vulnerability scan
+        run: uv run pip-audit
+      - name: Secret detection
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  docker:
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build multi-stage image
+        run: docker build --target production -t hiver/backend:${{ github.sha }} backend/
+      - name: Check image size
+        run: |
+          SIZE=$(docker image inspect hiver/backend:${{ github.sha }} --format='{{.Size}}')
+          echo "Image size: $((SIZE/1024/1024))MB"
+          if [ $((SIZE/1024/1024)) -gt 150 ]; then
+            echo "ERROR: Image exceeds 150MB limit" && exit 1
+          fi

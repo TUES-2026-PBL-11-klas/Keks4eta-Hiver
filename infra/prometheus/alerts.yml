@@ -1,0 +1,26 @@
+groups:
+  - name: hiver.alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate above 5%"
+
+      - alert: DBPoolHigh
+        expr: db_pool_checked_out / db_pool_size > 0.8
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB connection pool above 80%"
+
+      - alert: EscrowReleaseJobStale
+        expr: time() - hiver_escrow_last_release_timestamp > 7200
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Escrow auto-release job has not run in 2 hours"

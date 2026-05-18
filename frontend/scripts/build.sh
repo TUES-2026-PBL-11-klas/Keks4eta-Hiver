@@ -1,4 +1,2 @@
-#!/usr/bin/env sh
-
-npm install
+#!/bin/sh
 npm run build
