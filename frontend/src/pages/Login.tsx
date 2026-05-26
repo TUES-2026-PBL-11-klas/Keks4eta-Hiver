@@ -1,71 +1,82 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { api } from "@/lib/api";
-import { ROUTES } from "@/constants/routes";
-import styles from "./Auth.module.css";
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import PageFrame from '../components/PageFrame';
+import Logo from '../components/Logo';
+import Input from '../components/Input';
+import Button from '../components/Button';
+import styles from './Auth.module.css';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const data = await api.post<{ access_token: string }>("/auth/login", {
-        email,
-        password,
-      });
-      localStorage.setItem("access_token", data.access_token);
-      navigate(ROUTES.HOME);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
+    navigate('/loading');
+  };
 
   return (
-    <main className={styles.main}>
-      <form className={styles.card} onSubmit={handleSubmit}>
-        <h1 className={styles.title}>Sign in</h1>
+    <PageFrame>
+      <div className={styles.page}>
+        <div className={styles.topArc}>
+          <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
+          <h1 className={styles.brand}>Hiver</h1>
+        </div>
 
-        {error && <p className={styles.error}>{error}</p>}
+        <div className={styles.content}>
+          <h2 className={styles.heading}>
+            Log In to your <span className={styles.headingAccent}>account</span>
+          </h2>
+          <p className={styles.subheading}>Lorem Ipsum de la aracounter</p>
 
-        <label className={styles.label}>
-          Email
-          <input
-            className={styles.input}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
+          <div className={styles.logoWrap}>
+            <Logo size={120} />
+          </div>
 
-        <label className={styles.label}>
-          Password
-          <input
-            className={styles.input}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
+          <form onSubmit={handleLogin} style={{ width: '100%' }}>
+            <div className={styles.formGroup}>
+              <Input type="email" placeholder="Enter Email" required />
+              <Input
+                type={showPwd ? 'text' : 'password'}
+                placeholder="Enter Password"
+                required
+                rightIcon={
+                  <span
+                    onClick={() => setShowPwd((v) => !v)}
+                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                  >
+                    {showPwd ? '🙈' : '👁️'}
+                  </span>
+                }
+              />
+            </div>
 
-        <button className={styles.btn} type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
+            <div className={styles.rowBetween}>
+              <span className={styles.remember}>
+                <span className={styles.checkbox} /> Remember me
+              </span>
+              <span className={styles.forgot}>Forgot password?</span>
+            </div>
 
-        <p className={styles.footer}>
-          No account? <Link to={ROUTES.REGISTER}>Register</Link>
-        </p>
-      </form>
-    </main>
+            <Button variant="primary" type="submit">Log In</Button>
+          </form>
+
+          <div className={styles.divider}>
+            <span>Or LogIn with</span>
+            <span className={styles.googleIcon}>G</span>
+          </div>
+          <div className={styles.dividerLine} />
+
+          <p className={styles.bottomLink}>
+            Don't have an account?{' '}
+            <a onClick={() => navigate('/register')}>Register</a>
+          </p>
+        </div>
+
+        <div className={styles.bottomArc}>
+          <div className={styles.bottomDots} />
+        </div>
+      </div>
+    </PageFrame>
   );
 }
