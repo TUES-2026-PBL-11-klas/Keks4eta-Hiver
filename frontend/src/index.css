@@ -1,38 +1,61 @@
+:root {
+  /* Brand palette */
+  --color-orange: #EE7F22;
+  --color-orange-soft: #f29040;
+  --color-navy: #00224F;
+  --color-navy-soft: #0a3266;
+  --color-white: #FFFFFF;
+
+  /* Semantic aliases used by shared components */
+  --color-primary: var(--color-orange);
+  --color-primary-dark: var(--color-orange-soft);
+  --color-bg: #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-text: var(--color-navy);
+  --color-muted: #888;
+  --color-text-muted: #888;
+  --color-border: #c9c9c9;
+  --color-error: #EF4444;
+  --color-success: #10B981;
+
+  /* Typography */
+  --font-mono: 'Space Mono', 'Courier New', monospace;
+
+  /* Utilities */
+  --radius: 12px;
+  --radius-pill: 999px;
+  --radius-card: 16px;
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-:root {
-  --color-primary: #5B4CF5;
-  --color-primary-dark: #4338CA;
-  --color-accent: #F59E0B;
-  --color-bg: #F8F9FA;
-  --color-surface: #FFFFFF;
-  --color-text: #1A1A2E;
-  --color-muted: #6B7280;
-  --color-border: #E5E7EB;
-  --color-error: #EF4444;
-  --color-success: #10B981;
-
-  --radius: 12px;
-  --shadow: 0 1px 4px rgba(0,0,0,0.08);
+html, body, #root {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--color-bg);
-  color: var(--color-text);
+  font-family: var(--font-mono);
+  background: var(--color-orange);
+  color: var(--color-navy);
   line-height: 1.5;
 }
 
+input, button, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+
 a {
-  color: var(--color-primary);
+  color: inherit;
   text-decoration: none;
 }
 
 button {
   cursor: pointer;
-  font-family: inherit;
 }

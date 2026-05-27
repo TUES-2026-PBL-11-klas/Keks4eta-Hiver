@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
+import PageFrame from "@/components/PageFrame";
+import Logo from "@/components/Logo";
 import styles from "./Home.module.css";
 
 const VERTICALS = [
@@ -13,24 +15,23 @@ const VERTICALS = [
 
 export default function Home() {
   return (
-    <main className={styles.main}>
+    <PageFrame>
+      {/* Hero — B's orange splash style */}
       <section className={styles.hero}>
-        <h1 className={styles.headline}>
-          Find a <span>hiver</span> for anything
-        </h1>
-        <p className={styles.sub}>
-          Post a task, get offers from skilled locals, pay only when done.
-        </p>
-        <div className={styles.actions}>
-          <Link to={ROUTES.REGISTER} className={styles.btnPrimary}>
-            Post a task
-          </Link>
-          <Link to={ROUTES.TASKS} className={styles.btnOutline}>
-            Browse tasks
-          </Link>
+        <div className={styles.heroInner}>
+          <h1 className={styles.brand}>Hiver</h1>
+          <Logo size={100} />
+          <p className={styles.tagline}>
+            Help is just around the corner.<br />Get the perfect fix.
+          </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Link to={ROUTES.REGISTER} className={styles.btnPrimary}>Post a task</Link>
+          <Link to={ROUTES.LOGIN} className={styles.btnOutline}>Sign in</Link>
         </div>
       </section>
 
+      {/* Verticals grid — A's content */}
       <section className={styles.verticals}>
         <h2>What do you need?</h2>
         <div className={styles.grid}>
@@ -43,26 +44,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How it works — A's content */}
       <section className={styles.howItWorks}>
         <h2>How it works</h2>
         <div className={styles.steps}>
           <div className={styles.step}>
             <span className={styles.stepNum}>1</span>
-            <h3>Post a task</h3>
-            <p>Describe what you need and set a budget.</p>
+            <div>
+              <h3>Post a task</h3>
+              <p>Describe what you need and set a budget.</p>
+            </div>
           </div>
           <div className={styles.step}>
             <span className={styles.stepNum}>2</span>
-            <h3>Choose a hiver</h3>
-            <p>Review offers and pick the best match.</p>
+            <div>
+              <h3>Choose a hiver</h3>
+              <p>Review offers and pick the best match.</p>
+            </div>
           </div>
           <div className={styles.step}>
             <span className={styles.stepNum}>3</span>
-            <h3>Pay securely</h3>
-            <p>Funds held in escrow — released only when done.</p>
+            <div>
+              <h3>Pay securely</h3>
+              <p>Funds held in escrow — released only when done.</p>
+            </div>
           </div>
         </div>
       </section>
-    </main>
+    </PageFrame>
   );
 }
