@@ -2,8 +2,8 @@
 FROM python:3.12-slim AS deps
 WORKDIR /app
 RUN pip install uv
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen --no-dev
+COPY pyproject.toml ./
+RUN uv sync --no-dev
 
 # Stage 2: Production image — minimal
 FROM python:3.12-slim AS production
