@@ -72,3 +72,8 @@ infra/k8s/**/*-secret.yaml
 # Grafana provisioning secrets
 infra/grafana/**/*.json
 !infra/grafana/dashboards/*.json
+
+# Claude Code (per-session state + installed plugins)
+.claude/
+.agents/
+skills-lock.json
