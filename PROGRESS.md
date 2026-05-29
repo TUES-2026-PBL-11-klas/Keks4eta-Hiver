@@ -340,6 +340,7 @@ hiver_earnings_monthly
 - **Dependabot** — weekly pip / npm / actions / docker updates
 - **CONTRIBUTING.md** — workflow + doc-sync + commit conventions
 - **CLAUDE.md** — Clean Architecture rules, DB rules, doc-sync rule for AI-assisted contributions
+- **Shared Claude Code tooling** — `.claude/settings.json` (team plugin allow-list) + `.claude/skills/` (11 vendored design/UX skills) so every teammate gets the same AI assistants on `git pull` + restart. Setup + third-party attribution in `.claude/README.md`. Personal overrides stay in the git-ignored `.claude/settings.local.json`.
 
 **Still planned:**
 - **Unit tests** — domain entities (state machines, value object invariants), use cases with mocked repos
@@ -426,6 +427,10 @@ Keks4eta-Hiver/
 │   ├── grafana/                          Dashboard definitions
 │   ├── k8s/charts/hiver/                 Helm chart (2-10 replicas, HPA)
 │   └── terraform/                        AWS/GCP provisioning
+├── .claude/                              Shared team Claude Code setup
+│   ├── settings.json                     Team plugin allow-list (committed)
+│   ├── skills/                           11 vendored design/UX skills (committed)
+│   └── README.md                         Teammate setup + third-party attribution
 ├── docker-compose.yml                    5-service local stack
 ├── .env                                  Dev credentials (not committed)
 └── PROGRESS.md                           This file
