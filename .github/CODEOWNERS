@@ -1,0 +1,25 @@
+# CODEOWNERS — auto-request reviews based on path
+# Format: <pattern> <owner1> <owner2>
+
+# Default — everything not matched below
+*                              @AleksandarHaralampiev
+
+# Backend (Python / FastAPI / Clean Architecture)
+/backend/                      @AleksandarHaralampiev
+/backend/src/domain/           @AleksandarHaralampiev
+/backend/src/application/      @AleksandarHaralampiev
+/backend/src/infrastructure/   @AleksandarHaralampiev
+
+# Frontend (React + Vite)
+/frontend/                     @AleksandarHaralampiev
+
+# Database migrations — high-risk, must review carefully
+/backend/src/infrastructure/database/migrations/  @AleksandarHaralampiev
+
+# Infrastructure (Docker, K8s, Terraform, Prometheus)
+/infra/                        @AleksandarHaralampiev
+/docker-compose*.yml           @AleksandarHaralampiev
+
+# CI / repo config
+/.github/                      @AleksandarHaralampiev
+/CLAUDE.md                     @AleksandarHaralampiev

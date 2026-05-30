@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project documentation
+    url: https://github.com/AleksandarHaralampiev/Keks4eta-Hiver/blob/main/README.md
+    about: Start with the README, PROGRESS.md, and Hiver_Documentation.docx
+  - name: Team conventions
+    url: https://github.com/AleksandarHaralampiev/Keks4eta-Hiver/blob/main/CLAUDE.md
+    about: Doc-sync rules, architecture rules, commit conventions

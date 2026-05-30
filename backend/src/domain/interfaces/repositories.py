@@ -88,6 +88,18 @@ class IReadableTaskRepository(ABC):
         self, client_id: str, page: int = 1, page_size: int = 20
     ) -> PaginatedResult[Task]: ...
 
+    @abstractmethod
+    async def search(
+        self,
+        vertical: str | None = None,
+        status: str | None = None,
+        is_urgent: bool | None = None,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> PaginatedResult[Task]: ...
+
 
 class IWritableTaskRepository(ABC):
     """Write subset — used by task management services."""
