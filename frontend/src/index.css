@@ -1,31 +1,69 @@
+/* ============================================================================
+   Hiver — "The Hive" design system
+   Warm editorial utilitarian. Honey + ink, honeycomb motif, tri-type system.
+   ========================================================================== */
+
 :root {
-  /* Brand palette */
-  --color-orange: #EE7F22;
-  --color-orange-soft: #f29040;
-  --color-navy: #00224F;
-  --color-navy-soft: #0a3266;
-  --color-white: #FFFFFF;
+  /* ── Brand core ─────────────────────────────────────────────────────── */
+  --honey:      #EE7F22;   /* primary accent — honey/amber */
+  --honey-600:  #d96a10;   /* pressed / deep */
+  --honey-300:  #f6a85c;   /* tints, hovers */
+  --honey-100:  #fbe4cc;   /* faint fills */
 
-  /* Semantic aliases used by shared components */
-  --color-primary: var(--color-orange);
-  --color-primary-dark: var(--color-orange-soft);
-  --color-bg: #FFFFFF;
-  --color-surface: #FFFFFF;
-  --color-text: var(--color-navy);
-  --color-muted: #888;
-  --color-text-muted: #888;
-  --color-border: #c9c9c9;
-  --color-error: #EF4444;
-  --color-success: #10B981;
+  --ink:        #00224F;   /* primary text — deep navy */
+  --ink-900:    #001533;   /* max-contrast headings */
+  --ink-600:    #3a5478;   /* secondary text */
+  --ink-400:    #7d92ad;   /* muted / captions */
 
-  /* Typography */
-  --font-mono: 'Space Mono', 'Courier New', monospace;
+  /* ── Surfaces ───────────────────────────────────────────────────────── */
+  --paper:      #FBEFE0;   /* warm field the device sits on */
+  --paper-deep: #f4e2cd;   /* texture shadow tone */
+  --card:       #FFFDFB;   /* warm white card */
+  --card-2:     #FFF7EE;   /* subtly tinted card */
+  --line:       #ecdcc8;   /* warm hairline border */
+  --line-strong:#e0cbb0;
 
-  /* Utilities */
-  --radius: 12px;
-  --radius-pill: 999px;
-  --radius-card: 16px;
-  --shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  /* ── Semantic aliases (kept so legacy refs don't break) ─────────────── */
+  --color-primary: var(--honey);
+  --color-primary-dark: var(--honey-600);
+  --color-bg: var(--paper);
+  --color-surface: var(--card);
+  --color-text: var(--ink);
+  --color-muted: var(--ink-400);
+  --color-text-muted: var(--ink-400);
+  --color-border: var(--line);
+  --color-white: #ffffff;
+  --color-orange: var(--honey);
+  --color-navy: var(--ink);
+  --color-error: #c8462f;
+  --color-error-bg: #fbe3dd;
+  --color-success: #2e7d57;
+  --color-success-bg: #d9efe2;
+  --color-info: #2b5fa6;
+  --color-info-bg: #dde8f7;
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "Space Mono", "Courier New", monospace;
+
+  /* ── Radii & elevation ──────────────────────────────────────────────── */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 21, 51, 0.06),
+               0 2px 8px rgba(0, 21, 51, 0.05);
+  --shadow-md: 0 4px 14px rgba(0, 21, 51, 0.08),
+               0 12px 30px rgba(0, 21, 51, 0.07);
+  --shadow-lg: 0 20px 50px rgba(0, 21, 51, 0.16),
+               0 8px 18px rgba(0, 21, 51, 0.08);
+  --shadow-honey: 0 8px 22px rgba(238, 127, 34, 0.32);
+
+  /* Honeycomb texture — used as a faint background flourish */
+  --hex-texture:
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(0,34,79,0.04) 61%);
 }
 
 *, *::before, *::after {
@@ -36,26 +74,89 @@
 
 html, body, #root {
   height: 100%;
+}
+
+html {
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  font-family: var(--font-mono);
-  background: var(--color-orange);
-  color: var(--color-navy);
-  line-height: 1.5;
+  font-family: var(--font-body);
+  color: var(--ink);
+  line-height: 1.55;
+  background-color: var(--paper);
+  /* Layered honeycomb-ish warmth behind the centered device */
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, var(--honey-100) 0%, transparent 55%),
+    radial-gradient(90% 60% at 50% 110%, var(--paper-deep) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  color: var(--ink-900);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
 }
 
 input, button, textarea, select {
   font-family: inherit;
+  font-size: inherit;
   color: inherit;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+button { cursor: pointer; border: none; background: none; }
+
+a { color: inherit; text-decoration: none; }
+
+::selection {
+  background: var(--ink);
+  color: var(--honey-300);
 }
 
-button {
-  cursor: pointer;
+/* Honey-tinted scrollbar inside the device */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--honey-300) transparent;
+}
+
+/* ── Reusable motion ────────────────────────────────────────────────── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pop {
+  0%   { opacity: 0; transform: scale(0.92); }
+  60%  { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Staggered reveal helper — pages add .rise to children and set --d */
+.rise {
+  opacity: 0;
+  animation: rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  .rise { opacity: 1; }
 }

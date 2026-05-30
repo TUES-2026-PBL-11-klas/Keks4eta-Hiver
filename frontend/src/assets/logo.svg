@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="48" fill="#EE7F22"/>
-  <text x="50" y="66" font-family="'Space Mono', monospace" font-size="52" font-weight="700"
-        text-anchor="middle" fill="#00224F">H</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Hiver">
+  <defs>
+    <linearGradient id="hcomb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6a85c"/>
+      <stop offset="1" stop-color="#EE7F22"/>
+    </linearGradient>
+  </defs>
+  <!-- Honeycomb hexagon -->
+  <path d="M50 4 88 26 88 74 50 96 12 74 12 26Z" fill="url(#hcomb)"/>
+  <path d="M50 4 88 26 88 74 50 96 12 74 12 26Z" fill="none"
+        stroke="#00224F" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- Geometric H -->
+  <g fill="#00224F">
+    <rect x="33" y="32" width="9" height="36" rx="1.5"/>
+    <rect x="58" y="32" width="9" height="36" rx="1.5"/>
+    <rect x="33" y="45.5" width="34" height="9" rx="1.5"/>
+  </g>
+  <!-- Inner hex spark -->
+  <path d="M50 60 56 63.5 56 70 50 73.5 44 70 44 63.5Z" fill="#FBEFE0" opacity="0.0"/>
 </svg>
