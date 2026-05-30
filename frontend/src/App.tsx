@@ -4,12 +4,11 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Tasks from "@/pages/Tasks";
 import Profile from "@/pages/Profile";
-import NavBar from "@/components/NavBar";
+import AppShell from "@/components/AppShell";
 
 export default function App() {
   return (
-    <>
-      <NavBar />
+    <AppShell>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -18,6 +17,6 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </AppShell>
   );
 }

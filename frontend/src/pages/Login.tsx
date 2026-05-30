@@ -2,9 +2,9 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { ROUTES } from "@/constants/routes";
-import PageFrame from "@/components/PageFrame";
-import Logo from "@/components/Logo";
 import Input from "@/components/Input";
+import { ArrowLeftIcon, EyeIcon, EyeOffIcon, GoogleIcon } from "@/components/icons";
+import logo from "@/assets/logo.svg";
 import styles from "./Auth.module.css";
 
 export default function Login() {
@@ -31,74 +31,74 @@ export default function Login() {
   }
 
   return (
-    <PageFrame>
-      <div className={styles.page}>
-        <div className={styles.topArc}>
-          <button className={styles.backBtn} type="button" onClick={() => navigate(-1)}>←</button>
-          <h1 className={styles.brand}>Hiver</h1>
-        </div>
+    <div className={styles.page}>
+      <header className={styles.hero}>
+        <div className={styles.heroTexture} />
+        <button className={styles.back} type="button" onClick={() => navigate(-1)} aria-label="Go back">
+          <ArrowLeftIcon size={20} />
+        </button>
+        <img src={logo} alt="Hiver" className={styles.heroLogo} />
+        <span className={styles.heroWord}>Hiver</span>
+      </header>
 
-        <div className={styles.content}>
-          <h2 className={styles.heading}>
-            Log In to your <span className={styles.headingAccent}>account</span>
-          </h2>
+      <div className={styles.body}>
+        <h1 className={styles.title}>Welcome back</h1>
+        <p className={styles.lede}>Sign in to pick up where you left off.</p>
 
-          <div className={styles.logoWrap}>
-            <Logo size={100} />
+        {error && <p className={styles.error}>{error}</p>}
+
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            id="password"
+            label="Password"
+            type={showPwd ? "text" : "password"}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? "Hide password" : "Show password"}
+              >
+                {showPwd ? <EyeOffIcon size={19} /> : <EyeIcon size={19} />}
+              </button>
+            }
+          />
+
+          <div className={styles.row}>
+            <label className={styles.remember}>
+              <input type="checkbox" />
+              <span>Remember me</span>
+            </label>
+            <button type="button" className={styles.link}>Forgot password?</button>
           </div>
 
-          {error && <p className={styles.error}>{error}</p>}
+          <button className={styles.submit} type="submit" disabled={loading}>
+            {loading ? "Signing in…" : "Log in"}
+          </button>
+        </form>
 
-          <form onSubmit={handleSubmit} style={{ width: "100%" }}>
-            <div className={styles.formGroup}>
-              <Input
-                type="email"
-                placeholder="Enter Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <Input
-                type={showPwd ? "text" : "password"}
-                placeholder="Enter Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                rightIcon={
-                  <span onClick={() => setShowPwd((v) => !v)} style={{ cursor: "pointer" }}>
-                    {showPwd ? "🙈" : "👁️"}
-                  </span>
-                }
-              />
-            </div>
+        <div className={styles.divider}><span>or continue with</span></div>
 
-            <div className={styles.rowBetween}>
-              <span className={styles.remember}>
-                <span className={styles.checkbox} /> Remember me
-              </span>
-              <span className={styles.forgot}>Forgot password?</span>
-            </div>
+        <button type="button" className={styles.social}>
+          <GoogleIcon size={18} /> Google
+        </button>
 
-            <button className={styles.btn} type="submit" disabled={loading}>
-              {loading ? "Signing in…" : "Log In"}
-            </button>
-          </form>
-
-          <div className={styles.divider}>
-            <span>Or log in with</span>
-            <span className={styles.googleIcon}>G</span>
-          </div>
-          <div className={styles.dividerLine} />
-
-          <p className={styles.bottomLink}>
-            Don't have an account? <Link to={ROUTES.REGISTER}>Register</Link>
-          </p>
-        </div>
-
-        <div className={styles.bottomArc}>
-          <div className={styles.bottomDots} />
-        </div>
+        <p className={styles.foot}>
+          New to Hiver? <Link to={ROUTES.REGISTER}>Create an account</Link>
+        </p>
       </div>
-    </PageFrame>
+    </div>
   );
 }

@@ -1,30 +1,77 @@
-.wrapper {
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-600);
+  padding-left: 2px;
+}
+
+.box {
   position: relative;
+  display: flex;
+  align-items: center;
   width: 100%;
 }
 
 .input {
   width: 100%;
   padding: 13px 16px;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  font-size: 0.9rem;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font-size: 0.92rem;
+  font-weight: 500;
   outline: none;
-  background: var(--color-white);
-  transition: border-color 0.15s;
+  background: var(--card);
+  color: var(--ink);
+  transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
+}
+
+.input.hasLeft { padding-left: 44px; }
+
+.input::placeholder {
+  color: var(--ink-400);
+  font-weight: 500;
 }
 
 .input:focus {
-  border-color: var(--color-orange);
+  border-color: var(--honey);
+  background: var(--card-2);
+  box-shadow: 0 0 0 4px rgba(238, 127, 34, 0.14);
 }
 
-.icon {
+.left,
+.right {
   position: absolute;
-  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  color: var(--color-muted);
-  pointer-events: none;
+  color: var(--ink-400);
 }
+
+.left { left: 15px; pointer-events: none; }
+
+.right {
+  right: 8px;
+  pointer-events: auto;
+}
+
+.right button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--ink-400);
+  transition: color 0.15s, background 0.15s;
+}
+.right button:hover { color: var(--ink); background: var(--card-2); }

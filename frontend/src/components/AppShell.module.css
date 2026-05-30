@@ -1,0 +1,187 @@
+/* ── Warm field the device floats on ─────────────────────────────────── */
+.field {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  position: relative;
+}
+
+/* Signature honeycomb texture, very faint, behind the device */
+.field::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l11 6.35 11-6.35V17.9l-11-6.35L3 17.9z' fill='%2300224f' fill-opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* ── The device ──────────────────────────────────────────────────────── */
+.device {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  background: var(--card);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 540px) {
+  .field { align-items: center; }
+  .device {
+    height: min(900px, calc(100vh - 56px));
+    min-height: 0;
+    margin: 28px 0;
+    border-radius: 38px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    outline: 1px solid var(--line);
+    outline-offset: -1px;
+  }
+}
+
+/* ── Top brand bar ───────────────────────────────────────────────────── */
+.topbar {
+  flex-shrink: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  z-index: 5;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brandMark {
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(238, 127, 34, 0.35));
+}
+
+.brandWord {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
+}
+
+.locChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-600);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  padding: 5px 11px 5px 9px;
+  border-radius: var(--r-pill);
+}
+
+.locDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--honey);
+  box-shadow: 0 0 0 3px rgba(238, 127, 34, 0.2);
+}
+
+/* ── Scrollable page viewport ────────────────────────────────────────── */
+.viewport {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Bottom tab bar ──────────────────────────────────────────────────── */
+.tabbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 70px;
+  padding: 0 8px 6px;
+  background: rgba(255, 253, 251, 0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  position: relative;
+  z-index: 5;
+}
+
+.tab {
+  flex: 1;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.tab:active { transform: scale(0.92); }
+.tab:hover { color: var(--ink-600); }
+
+.tabActive {
+  color: var(--honey-600);
+}
+
+.tabActive svg {
+  filter: drop-shadow(0 3px 6px rgba(238, 127, 34, 0.35));
+}
+
+/* Center raised "Post" hex */
+.post {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.postHex {
+  width: 52px;
+  height: 52px;
+  margin-top: -22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(160deg, var(--honey-300), var(--honey-600));
+  /* hexagon */
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  box-shadow: var(--shadow-honey);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.post:hover .postHex { transform: translateY(-2px) rotate(8deg); }
+.post:active .postHex { transform: scale(0.94); }
+
+.postLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--honey-600);
+}
