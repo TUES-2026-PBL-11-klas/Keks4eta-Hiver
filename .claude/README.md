@@ -22,6 +22,15 @@ Coding/workflow: `code-review`, `code-simplifier`, `commit-commands`,
 `feature-dev`, `pr-review-toolkit`, `security-guidance`, `claude-md-management`,
 `terraform`, `superpowers`, `skill-creator`.
 Design: `frontend-design`, `playground`.
+MCP-backed (extra setup — see note below): `context7` (live library docs),
+`github` (PRs/issues from chat), `playwright` (drive a real browser).
+
+> **MCP plugins need a little more than a restart.** On first use Claude Code
+> launches their MCP servers, which may run `npx` (downloads `context7` /
+> `playwright` on demand) and prompt for auth. `github` uses your local `gh`
+> login (`gh auth login`). If a tool from these doesn't appear, run `/mcp` to
+> check server status. They're optional — skip the auth and the rest of the
+> toolkit still works.
 
 ### Skills (`.claude/skills/`)
 | Skill | Use for |
@@ -37,6 +46,9 @@ Design: `frontend-design`, `playground`.
 | `industrial-brutalist-ui` | Brutalist aesthetic variant |
 | `high-end-visual-design` | Soft / high-end visual aesthetic variant |
 | `redesign-existing-projects` | Audit-first redesign of existing UI |
+| `code-reviewer` | Multi-language review (TS/JS/Py/Go/Swift/Kotlin): security scan, best-practice checks, checklist + report generation |
+| `browser-use` | Browser automation patterns: navigation, element interaction, form filling, scraping, web-app testing |
+| `mcp-integration` | Build MCP servers/clients: tool definitions, resource management, transport protocols (Python + TypeScript) |
 
 ## Personal vs. shared
 
@@ -58,6 +70,8 @@ codebase. Licenses belong to their authors:
 | `impeccable` | https://github.com/pbakaus/impeccable | Paul Bakaus (Apache-2.0) |
 | `animate` | https://github.com/delphi-ai/animate-skill | Delphi |
 | `design-motion-principles` | https://github.com/kylezantos/design-motion-principles | Kyle Zantos |
+| `browser-use` | https://github.com/browser-use/browser-use | Browser Use |
+| `mcp-integration` | https://github.com/anthropics/claude-code | Anthropic |
 | `frontend-design`, `playground`, `superpowers` (plugins) | https://github.com/anthropics/claude-plugins-official | Anthropic |
 
 To update a skill, re-pull from its upstream repo and copy the skill folder back
