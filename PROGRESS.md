@@ -83,7 +83,12 @@ Supabase is used only for **Storage** (task images) and **Realtime** (push notif
 | **Vite 5** | 5.3.1 | Much faster than Webpack, native ES modules, instant HMR | Build tool & dev server |
 | **CSS Modules** | built-in | Scoped styles per component, no global class name collisions | Component styling |
 
-**Design system:** Orange (`#EE7F22`) + Navy (`#00224F`), Space Mono font, phone-frame mockup layout (480px centered card).
+**Design system — "The Hive":** warm editorial-utilitarian direction built on the existing brand.
+- **Palette:** Honey (`#EE7F22`) + deep navy ink (`#00224F`) on a warm paper field (`#FBEFE0`); tints and tones are exposed as CSS custom properties in `src/index.css` (`--honey*`, `--ink*`, `--paper`, `--card`, `--line`, semantic state colors).
+- **Type:** tri-font system — **Fraunces** (optical serif) for display/brand, **Hanken Grotesk** for body, **Space Mono** kept deliberately for prices/tags/meta (a callback to the original identity). Loaded via Google Fonts in `index.html`.
+- **Motif:** honeycomb — hexagon brand mark, hex category glyphs, hex avatars, a faint honeycomb texture behind the device, and a raised hex "Post" action in the tab bar.
+- **Layout:** one shared `AppShell` (centered phone-frame device, slim brand bar, bottom tab nav) wraps every route; the tab bar is hidden on auth routes. Replaces the old per-page `PageFrame`/floating `NavBar` split.
+- **Components:** `AppShell`, `Input` (label + left/right icon slots), and a stroke-based SVG `icons` set replace all emoji iconography. Motion: staggered page-load reveals via a global `.rise` helper, with `prefers-reduced-motion` honored.
 
 ---
 
