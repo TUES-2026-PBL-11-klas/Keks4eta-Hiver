@@ -13,7 +13,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 2 | Domain layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database migrations + seed | ✅ Done | `c12b244` |
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
-| 5 | Tests + CI/CD + observability | ⏳ CI workflow + repo infra in place; tests not started | — |
+| 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 
 ## Tech Stack (short)
 

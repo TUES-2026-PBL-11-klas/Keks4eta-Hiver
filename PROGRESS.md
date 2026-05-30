@@ -34,7 +34,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 2 | Domain Layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database Migrations | ✅ Done | `c12b244` |
 | 4 | API Layer | ✅ Done | `b0b0447` |
-| 5 | Tests + CI/CD + Observability | ⏳ CI workflow, PR/issue templates, CODEOWNERS, dependabot in place; tests not started | — |
+| 5 | Tests + CI/CD + Observability | ⏳ In progress — domain unit tests done (97, all green); CI/templates/CODEOWNERS/dependabot in place; use-case + integration tests next | — |
 
 ---
 
@@ -342,8 +342,11 @@ hiver_earnings_monthly
 - **CLAUDE.md** — Clean Architecture rules, DB rules, doc-sync rule for AI-assisted contributions
 - **Shared Claude Code tooling** — `.claude/settings.json` (team plugin allow-list) + `.claude/skills/` (11 vendored design/UX skills) so every teammate gets the same AI assistants on `git pull` + restart. Setup + third-party attribution in `.claude/README.md`. Personal overrides stay in the git-ignored `.claude/settings.local.json`.
 
+**Done:**
+- **Domain unit tests** — 97 tests, all green (`backend/tests/unit/domain/`): value objects (Money, Rating, WorkRadius, Location invariants + Haversine) and entity state machines (Task/Offer/Transaction lifecycles, Review blind-reveal, User Client/Hiver polymorphism + level-ups). Pure Python, no DB. `conftest.py` puts `src` on `sys.path`. Run with `pytest tests/unit/domain -o addopts=""` (coverage gate disabled until the suite is fuller).
+
 **Still planned:**
-- **Unit tests** — domain entities (state machines, value object invariants), use cases with mocked repos
+- **Use-case tests** — application use cases with in-memory fake repositories
 - **Integration tests** — repositories against a real test database, API HTTP tests
 - **Coverage target** — 80% minimum (already enforced by `pytest-cov` in CI; suite is empty)
 - **Kubernetes deployment** — Helm chart with 2–10 replicas, rolling updates, zero downtime
