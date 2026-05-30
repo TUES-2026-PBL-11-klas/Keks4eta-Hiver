@@ -12,7 +12,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 1 | Project scaffold | ✅ Done | `bfab23f` |
 | 2 | Domain layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database migrations + seed | ✅ Done | `c12b244` |
-| 4 | API layer (FastAPI routers + DI) | ✅ Done | uncommitted |
+| 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ CI workflow + repo infra in place; tests not started | — |
 
 ## Tech Stack (short)
@@ -63,16 +63,20 @@ hiver/
 
 ```bash
 # 1. Environment variables
-cp .env.example .env             # fill in DB_URL, JWT_SECRET, STRIPE_KEY, ...
+cp .env.example .env             # then set JWT_SECRET_KEY (see comment in the file)
+# .env.example creds already match docker-compose; Stripe can stay as dummy values.
 
-# 2. Start services (postgres, redis, backend, prometheus, grafana)
-docker compose up -d
+# 2. Start infra only — NOT the backend container.
+#    (The backend container needs DB host = "postgres"; running it on the host needs
+#     "localhost". The same .env can't satisfy both, so run the backend on the host.)
+docker compose up -d postgres redis prometheus grafana
 
-# 3. Run database migrations + seed data
+# 3. Backend deps + migrations + seed data
 cd backend
+pip install uv && uv sync --dev
 alembic upgrade head
 
-# 4. Dev server (auto-reload)
+# 4. Dev server (auto-reload), from backend/
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 

@@ -33,7 +33,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 1 | Project Scaffold | ✅ Done | `bfab23f` |
 | 2 | Domain Layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database Migrations | ✅ Done | `c12b244` |
-| 4 | API Layer | ✅ Done (uncommitted) | — |
+| 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ⏳ CI workflow, PR/issue templates, CODEOWNERS, dependabot in place; tests not started | — |
 
 ---
@@ -241,7 +241,7 @@ hiver_earnings_monthly
 
 ---
 
-### Phase 4 — API Layer ✅ (complete, not yet committed)
+### Phase 4 — API Layer ✅ (committed `b0b0447`)
 
 **What it is:** Everything that connects the domain layer to the outside world — FastAPI routers, request/response DTOs, use cases that orchestrate business flows, and concrete repository implementations that talk to Postgres.
 
