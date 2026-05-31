@@ -22,6 +22,9 @@ poetry.lock
 .env.*
 !.env.example
 
+# Local-only Docker overrides (machine-specific ports, etc.)
+docker-compose.override.yml
+
 # Testing & Coverage
 .pytest_cache/
 htmlcov/
