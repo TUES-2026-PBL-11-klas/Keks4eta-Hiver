@@ -1,92 +1,142 @@
-import { useNavigate, Link } from "react-router-dom";
-import { useFetch } from "@/hooks/useFetch";
-import type { User } from "@/types";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
-import { ShieldIcon, SearchIcon, ArrowRightIcon } from "@/components/icons";
-import styles from "./Profile.module.css";
-
-const ROLE_COPY: Record<User["role"], { label: string; blurb: string }> = {
-  client: { label: "Client", blurb: "You post tasks and hire hivers." },
-  hiver: { label: "Hiver", blurb: "You make offers and earn." },
-};
+import { userService } from "@/lib/services";
+import { Avatar, Badge, Button, Card, Stars } from "@/components/ui";
+import { GridIcon, SearchIcon, LogOutIcon, ShieldIcon } from "@/components/icons";
+import s from "./Profile.module.css";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { data, loading, error } = useFetch<User>("/users/me");
+  const { user, logout, refresh } = useAuth();
+  const [available, setAvailable] = useState(!!user?.is_available_now);
+  const [saving, setSaving] = useState(false);
+
+  if (!user) return null; // guarded by ProtectedRoute
+
+  const isHiver = user.role === "hiver";
 
   function signOut() {
-    localStorage.removeItem("access_token");
-    navigate(ROUTES.LOGIN);
+    logout();
+    navigate(ROUTES.HOME);
   }
 
-  if (loading)
-    return (
-      <div className={styles.page}>
-        <div className={`${styles.hexAvatar} ${styles.pulse}`} />
-        <p className={styles.state}>Loading your profile…</p>
-      </div>
-    );
-
-  if (error)
-    return (
-      <div className={styles.page}>
-        <div className={styles.notice}>
-          <p className={styles.noticeTitle}>Couldn't load profile</p>
-          <p className={styles.noticeBody}>{error}</p>
-          <Link to={ROUTES.LOGIN} className={styles.noticeLink}>Sign in again</Link>
-        </div>
-      </div>
-    );
-
-  if (!data)
-    return (
-      <div className={styles.page}>
-        <div className={styles.notice}>
-          <p className={styles.noticeTitle}>You're not signed in</p>
-          <Link to={ROUTES.LOGIN} className={styles.noticeLink}>Go to sign in</Link>
-        </div>
-      </div>
-    );
-
-  const role = ROLE_COPY[data.role];
+  async function toggleAvailability() {
+    const next = !available;
+    setAvailable(next);
+    setSaving(true);
+    try {
+      await userService.setAvailability(next);
+      await refresh();
+    } catch {
+      setAvailable(!next);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div className={styles.page}>
-      <section className={styles.header}>
-        <div className={styles.hexAvatar}>
-          {data.avatar_url ? (
-            <img src={data.avatar_url} alt={data.full_name} />
+    <div className="page-wrap-narrow">
+      <section className={s.header}>
+        <Avatar name={user.full_name} src={user.avatar_url} size={96} />
+        <div className={s.headerMeta}>
+          <h1 className={s.name}>{user.full_name}</h1>
+          <p className={s.email}>{user.email}</p>
+          <div className={s.badges}>
+            <Badge tone="honey">{user.role}</Badge>
+            {isHiver && user.level && <Badge tone="muted">{user.level}</Badge>}
+            {user.is_oauth && <Badge tone="info">Social login</Badge>}
+          </div>
+        </div>
+      </section>
+
+      <Card>
+        <div className={s.stats}>
+          {isHiver ? (
+            <>
+              <div className={s.stat}>
+                <span className={s.statValue}><Stars value={user.avg_rating ?? 0} size={16} /></span>
+                <span className={s.statLabel}>Rating</span>
+              </div>
+              <div className={s.stat}>
+                <span className={s.statValue}>{user.completed_tasks ?? 0}</span>
+                <span className={s.statLabel}>Jobs done</span>
+              </div>
+              <div className={s.stat}>
+                <span className={s.statValue}>{user.xp_points ?? 0}</span>
+                <span className={s.statLabel}>XP</span>
+              </div>
+            </>
           ) : (
-            <span>{data.full_name.charAt(0).toUpperCase()}</span>
+            <>
+              <div className={s.stat}>
+                <span className={s.statValue}><Stars value={user.rating_as_client ?? 5} size={16} /></span>
+                <span className={s.statLabel}>Rating</span>
+              </div>
+              <div className={s.stat}>
+                <span className={s.statValue}>{user.total_tasks ?? 0}</span>
+                <span className={s.statLabel}>Tasks posted</span>
+              </div>
+              <div className={s.stat}>
+                <span className={s.statValue}>{user.review_count ?? 0}</span>
+                <span className={s.statLabel}>Reviews</span>
+              </div>
+            </>
           )}
         </div>
-        <h1 className={styles.name}>{data.full_name}</h1>
-        <p className={styles.email}>{data.email}</p>
-        <span className={`${styles.role} ${styles[data.role]}`}>{role.label}</span>
-      </section>
+        {isHiver && user.skills && user.skills.length > 0 && (
+          <div className={s.skills}>
+            {user.skills.map((sk) => <Badge key={sk}>{sk}</Badge>)}
+          </div>
+        )}
+      </Card>
 
-      <p className={styles.roleBlurb}>{role.blurb}</p>
+      {isHiver && (
+        <>
+          <h2 className="section-title" style={{ margin: "var(--sp-8) 0 var(--sp-4)" }}>Availability</h2>
+          <Card>
+            <div className={s.availRow}>
+              <div className={s.availText}>
+                <strong>{available ? "Available for work" : "Not available"}</strong>
+                <span>Toggle whether clients can find you in nearby searches.</span>
+              </div>
+              <label className={s.switch}>
+                <input type="checkbox" checked={available} onChange={toggleAvailability} disabled={saving} />
+                <span className={s.slider} />
+              </label>
+            </div>
+          </Card>
+        </>
+      )}
 
-      <section className={styles.tiles}>
-        <Link to={ROUTES.TASKS} className={styles.tile}>
-          <span className={styles.tileIcon}><SearchIcon size={20} /></span>
-          <span className={styles.tileText}>
-            <strong>Browse tasks</strong>
-            <em>Find work or hire help</em>
+      <div className={s.tiles}>
+        <button className={s.tile} onClick={() => navigate(ROUTES.DASHBOARD)}>
+          <span className={s.tileIcon}><GridIcon size={20} /></span>
+          <span className={s.tileText}>
+            <strong>Dashboard</strong>
+            <span>{isHiver ? "Your work & stats" : "Your posted tasks"}</span>
           </span>
-          <ArrowRightIcon size={18} className={styles.tileArrow} />
-        </Link>
-
-        <div className={styles.tile}>
-          <span className={styles.tileIcon}><ShieldIcon size={20} /></span>
-          <span className={styles.tileText}>
+        </button>
+        <button className={s.tile} onClick={() => navigate(ROUTES.TASKS)}>
+          <span className={s.tileIcon}><SearchIcon size={20} /></span>
+          <span className={s.tileText}>
+            <strong>Browse tasks</strong>
+            <span>{isHiver ? "Find work" : "See the marketplace"}</span>
+          </span>
+        </button>
+        <div className={s.tile}>
+          <span className={s.tileIcon}><ShieldIcon size={20} /></span>
+          <span className={s.tileText}>
             <strong>Escrow protected</strong>
-            <em>Payments held until tasks complete</em>
+            <span>Payments held until tasks complete</span>
           </span>
         </div>
-      </section>
+      </div>
 
-      <button className={styles.signout} onClick={signOut}>Sign out</button>
+      <Button variant="secondary" block className={s.signout} onClick={signOut}>
+        <LogOutIcon size={18} /> Sign out
+      </Button>
     </div>
   );
 }

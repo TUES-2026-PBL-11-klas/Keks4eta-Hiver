@@ -1,84 +1,147 @@
-/* ── Warm field the device floats on ─────────────────────────────────── */
-.field {
+/* ============================================================================
+   Responsive app shell.
+   - Phone (<640):   top bar + bottom tab nav (the original Hive mobile feel).
+   - Tablet (≥640):  top bar with inline nav, no bottom bar.
+   - Desktop (≥1024): fixed left sidebar + top bar + wide content.
+   ========================================================================== */
+
+.shell {
   min-height: 100vh;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
-/* Signature honeycomb texture, very faint, behind the device */
-.field::before {
+/* faint honeycomb wash behind everything */
+.shell::before {
   content: "";
   position: fixed;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l11 6.35 11-6.35V17.9l-11-6.35L3 17.9z' fill='%2300224f' fill-opacity='0.05'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l11 6.35 11-6.35V17.9l-11-6.35L3 17.9z' fill='%2300224f' fill-opacity='0.04'/%3E%3C/svg%3E");
 }
 
-/* ── The device ──────────────────────────────────────────────────────── */
-.device {
-  width: 100%;
-  max-width: 440px;
-  min-height: 100vh;
-  background: var(--card);
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+/* ── Sidebar (desktop only) ──────────────────────────────────────────────── */
+.sidebar { display: none; }
 
-@media (min-width: 540px) {
-  .field { align-items: center; }
-  .device {
-    height: min(900px, calc(100vh - 56px));
-    min-height: 0;
-    margin: 28px 0;
-    border-radius: 38px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    outline: 1px solid var(--line);
-    outline-offset: -1px;
+@media (min-width: 1024px) {
+  .shell { grid-template-columns: var(--sidebar-w) 1fr; }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: var(--sp-6) var(--sp-4);
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    z-index: 20;
   }
 }
 
-/* ── Top brand bar ───────────────────────────────────────────────────── */
-.topbar {
-  flex-shrink: 0;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  background: var(--card);
-  border-bottom: 1px solid var(--line);
-  position: relative;
-  z-index: 5;
-}
-
-.brand {
+.sideBrand {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  padding: 0 var(--sp-3) var(--sp-2);
+  margin-bottom: var(--sp-6);
 }
-
-.brandMark {
-  display: block;
-  filter: drop-shadow(0 2px 4px rgba(238, 127, 34, 0.35));
-}
-
+.sideBrand img { filter: drop-shadow(0 2px 5px rgba(238, 127, 34, 0.35)); }
 .brandWord {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   letter-spacing: -0.02em;
   color: var(--ink-900);
 }
 
+.sideNav { display: flex; flex-direction: column; gap: 2px; }
+.sideLink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 11px var(--sp-3);
+  border-radius: var(--r-md);
+  color: var(--ink-600);
+  font-weight: 600;
+  font-size: 0.96rem;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.sideLink:hover { background: var(--card-2); color: var(--ink-900); }
+.sideLink.active { background: var(--honey-100); color: var(--honey-600); }
+.sideLink.active svg { filter: drop-shadow(0 2px 4px rgba(238, 127, 34, 0.3)); }
+
+.sideCta { margin-top: var(--sp-5); }
+
+.sideFoot { margin-top: auto; padding-top: var(--sp-4); }
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  transition: background 0.16s ease;
+}
+.userChip:hover { background: var(--card-2); }
+.userMeta { display: flex; flex-direction: column; min-width: 0; text-align: left; }
+.userName { font-weight: 700; color: var(--ink-900); font-size: 0.9rem; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.userRole { font-family: var(--font-mono); font-size: 0.66rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--ink-400); }
+
+/* ── Main column ──────────────────────────────────────────────────────────── */
+.main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--gutter);
+  background: rgba(255, 253, 251, 0.85);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.topBrand { display: inline-flex; align-items: center; gap: 9px; }
+.topBrand img { filter: drop-shadow(0 2px 4px rgba(238, 127, 34, 0.35)); }
+.topBrandWord {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  color: var(--ink-900);
+}
+@media (min-width: 1024px) { .topBrand { display: none; } }  /* sidebar owns the brand */
+
+/* inline nav — tablet only */
+.topNav { display: none; }
+@media (min-width: 640px) and (max-width: 1023px) {
+  .topNav { display: flex; gap: 2px; }
+  .topNavLink {
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+    color: var(--ink-600);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .topNavLink:hover { background: var(--card-2); }
+  .topNavLink.active { background: var(--honey-100); color: var(--honey-600); }
+}
+
 .locChip {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
@@ -89,99 +152,89 @@
   color: var(--ink-600);
   background: var(--card-2);
   border: 1px solid var(--line);
-  padding: 5px 11px 5px 9px;
+  padding: 6px 12px 6px 10px;
   border-radius: var(--r-pill);
 }
+@media (min-width: 480px) { .locChip { display: inline-flex; } }
+.locDot { width: 7px; height: 7px; border-radius: 50%; background: var(--honey);
+  box-shadow: 0 0 0 3px rgba(238, 127, 34, 0.2); }
 
-.locDot {
-  width: 7px;
-  height: 7px;
+.spacer { flex: 1; }
+
+.topActions { display: flex; align-items: center; gap: var(--sp-2); }
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: var(--honey);
-  box-shadow: 0 0 0 3px rgba(238, 127, 34, 0.2);
+  color: var(--ink-600);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  transition: background 0.16s ease, color 0.16s ease;
 }
+.iconBtn:hover { background: var(--line); color: var(--ink-900); }
+.avatarBtn { border: none; background: none; padding: 0; border-radius: 0; }
 
-/* ── Scrollable page viewport ────────────────────────────────────────── */
+/* ── Content viewport ─────────────────────────────────────────────────────── */
+/* Pages own their own width via .page-wrap / .page-wrap-narrow (global). */
 .viewport {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  min-width: 0;
 }
 
-/* ── Bottom tab bar ──────────────────────────────────────────────────── */
-.tabbar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 70px;
-  padding: 0 8px 6px;
-  background: rgba(255, 253, 251, 0.92);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--line);
-  position: relative;
-  z-index: 5;
+/* ── Bottom tab bar (phone only) ──────────────────────────────────────────── */
+.tabbar { display: none; }
+@media (max-width: 639px) {
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    height: var(--bottomnav-h);
+    padding: 0 8px 6px;
+    background: rgba(255, 253, 251, 0.94);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+  }
 }
-
 .tab {
   flex: 1;
-  height: 56px;
+  height: 54px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--ink-400);
   transition: color 0.18s ease, transform 0.18s ease;
 }
-
 .tab:active { transform: scale(0.92); }
-.tab:hover { color: var(--ink-600); }
+.tab.active { color: var(--honey-600); }
+.tab.active svg { filter: drop-shadow(0 3px 6px rgba(238, 127, 34, 0.35)); }
 
-.tabActive {
-  color: var(--honey-600);
-}
-
-.tabActive svg {
-  filter: drop-shadow(0 3px 6px rgba(238, 127, 34, 0.35));
-}
-
-/* Center raised "Post" hex */
-.post {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
+.post { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .postHex {
-  width: 52px;
-  height: 52px;
-  margin-top: -22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 50px;
+  height: 50px;
+  margin-top: -20px;
+  display: grid;
+  place-items: center;
   color: #fff;
   background: linear-gradient(160deg, var(--honey-300), var(--honey-600));
-  /* hexagon */
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   box-shadow: var(--shadow-honey);
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.post:hover .postHex { transform: translateY(-2px) rotate(8deg); }
 .post:active .postHex { transform: scale(0.94); }
-
-.postLabel {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--honey-600);
-}
+.postLabel { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em;
+  text-transform: uppercase; color: var(--honey-600); }

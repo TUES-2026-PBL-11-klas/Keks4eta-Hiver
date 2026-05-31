@@ -1,0 +1,409 @@
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { ROUTES, paths } from "@/constants/routes";
+import {
+  offerService,
+  paymentService,
+  reviewService,
+  taskService,
+} from "@/lib/services";
+import { budgetLabel } from "@/lib/format";
+import { VERTICAL_ICON } from "@/components/verticalIcons";
+import { Avatar, Badge, Button, Card, EmptyState, Spinner, Stars } from "@/components/ui";
+import { Modal } from "@/components/Modal";
+import {
+  ArrowLeftIcon,
+  PinIcon,
+  WalletIcon,
+  ClockIcon,
+  BoltIcon,
+  StarIcon,
+  Hexagon,
+} from "@/components/icons";
+import type { Offer, Review, TaskDetail as TaskDetailT } from "@/types";
+import s from "./TaskDetail.module.css";
+
+export default function TaskDetail() {
+  const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+
+  const [task, setTask] = useState<TaskDetailT | null>(null);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+
+  const isOwner = !!user && task?.client_id === user.id;
+  const isAssignedHiver = !!user && task?.hiver_id === user.id;
+  const isHiver = user?.role === "hiver";
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const t = await taskService.get(id);
+      setTask(t);
+      const [rev] = await Promise.all([
+        reviewService.forTask(id).catch(() => [] as Review[]),
+      ]);
+      setReviews(rev);
+      // Offers are visible to the owning client only.
+      if (user && t.client_id === user.id) {
+        setOffers(await offerService.forTask(id).catch(() => []));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, user]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function run(fn: () => Promise<unknown>) {
+    setBusy(true);
+    setActionError("");
+    try {
+      await fn();
+      await load();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="page-wrap" style={{ display: "grid", placeItems: "center", minHeight: "50vh" }}>
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error || !task) {
+    return (
+      <div className="page-wrap">
+        <EmptyState icon={<Hexagon size={28} />} title="Task not found"
+          action={<Button variant="secondary" onClick={() => navigate(ROUTES.TASKS)}>Back to tasks</Button>}>
+          {error || "This task may have been removed."}
+        </EmptyState>
+      </div>
+    );
+  }
+
+  const Icon = VERTICAL_ICON[task.vertical] ?? VERTICAL_ICON.home;
+  const b = budgetLabel(task);
+  const answers = Object.entries(task.smart_answers ?? {});
+
+  return (
+    <div className="page-wrap">
+      <Link to={ROUTES.TASKS} className={s.back}>
+        <ArrowLeftIcon size={16} /> All tasks
+      </Link>
+
+      <div className={s.layout}>
+        {/* ── Main ─────────────────────────────────────────────── */}
+        <div>
+          <div className={s.headRow}>
+            <span className={s.glyph}><Icon size={26} /></span>
+            <div>
+              <h1 className={s.title}>{task.title}</h1>
+              <p className={s.sub}>{task.vertical} · {task.subcategory}</p>
+            </div>
+          </div>
+
+          <div className={s.badges}>
+            <Badge tone={task.status === "open" ? "honey" : task.status === "completed" ? "success" : "info"}>
+              {task.status.replace("_", " ")}
+            </Badge>
+            {task.is_urgent && <Badge tone="error"><BoltIcon size={11} /> Urgent</Badge>}
+          </div>
+
+          <div className={s.metaGrid}>
+            <div>
+              <div className={s.metaLabel}>Budget</div>
+              <div className={s.metaValue}><WalletIcon size={16} /> {b ?? "Open"}</div>
+            </div>
+            <div>
+              <div className={s.metaLabel}>Location</div>
+              <div className={s.metaValue}><PinIcon size={16} /> {task.location_display ?? "—"}</div>
+            </div>
+            <div>
+              <div className={s.metaLabel}>Posted</div>
+              <div className={s.metaValue}>
+                <ClockIcon size={16} /> {new Date(task.created_at).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+
+          <h2 className={s.sectionTitle}>Description</h2>
+          <p className={s.desc}>{task.description}</p>
+
+          {answers.length > 0 && (
+            <>
+              <h2 className={s.sectionTitle}>Details</h2>
+              <div className={s.answers}>
+                {answers.map(([k, v]) => (
+                  <div key={k} className={s.answer}>
+                    <span className={s.answerKey}>{k.replace(/_/g, " ")}</span>
+                    <span className={s.answerVal}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Reviews */}
+          {reviews.length > 0 && (
+            <>
+              <h2 className={s.sectionTitle}>Reviews</h2>
+              <div style={{ display: "grid", gap: 12 }}>
+                {reviews.map((r) => (
+                  <Card key={r.id} className={s.review}>
+                    <div className={s.reviewTop}>
+                      <Stars value={r.rating} />
+                      <span className={s.offerHours}>{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className={s.reviewComment}>{r.comment}</p>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Side panel ────────────────────────────────────────── */}
+        <aside className={s.panel}>
+          <Card>
+            <div className={s.actions}>
+              {actionError && <p className={s.error}>{actionError}</p>}
+
+              {!isAuthenticated && (
+                <>
+                  <Button onClick={() => navigate(ROUTES.LOGIN)}>Sign in to respond</Button>
+                  <p className={s.hint}>Sign in as a hiver to make an offer.</p>
+                </>
+              )}
+
+              {isHiver && !isOwner && task.status === "open" && (
+                <Button onClick={() => setOfferOpen(true)} disabled={busy}>
+                  Make an offer
+                </Button>
+              )}
+
+              {isAssignedHiver && task.status === "accepted" && (
+                <Button onClick={() => run(() => taskService.start(task.id))} disabled={busy}>
+                  Start task
+                </Button>
+              )}
+
+              {isOwner && task.status === "in_progress" && (
+                <Button onClick={() => run(() => taskService.complete(task.id))} disabled={busy}>
+                  Mark complete
+                </Button>
+              )}
+
+              {isOwner && task.status === "completed" && (
+                <Button onClick={() => run(() => paymentService.releaseEscrow(task.id))} disabled={busy}>
+                  Release escrow
+                </Button>
+              )}
+
+              {task.status === "completed" && (isOwner || isAssignedHiver) && (
+                <Button variant="secondary" onClick={() => setReviewOpen(true)} disabled={busy}>
+                  <StarIcon size={16} /> Leave a review
+                </Button>
+              )}
+
+              {isOwner && task.status !== "completed" && task.status !== "cancelled" && (
+                <Button variant="ghost" onClick={() => run(() => taskService.cancel(task.id))} disabled={busy}>
+                  Cancel task
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Offers — owner only */}
+          {isOwner && (
+            <Card>
+              <h2 className={s.sectionTitle} style={{ marginTop: 0 }}>
+                Offers ({offers.length})
+              </h2>
+              {offers.length === 0 ? (
+                <p className={s.hint}>No offers yet. Hivers will appear here as they bid.</p>
+              ) : (
+                <div style={{ display: "grid", gap: 16 }}>
+                  {offers.map((o) => (
+                    <div key={o.id} className={s.offer}>
+                      <div className={s.offerHead}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <Avatar name="Hiver" size={34} />
+                          <span className={s.offerPrice}>{o.price} BGN</span>
+                        </div>
+                        <span className={s.offerHours}>~{o.estimated_hours}h</span>
+                      </div>
+                      <p className={s.offerMsg}>{o.message}</p>
+                      {task.status === "open" && (
+                        <Button
+                          size="sm"
+                          onClick={() => run(() => offerService.accept(task.id, o.id))}
+                          disabled={busy}
+                        >
+                          Accept offer
+                        </Button>
+                      )}
+                      {o.status === "accepted" && <Badge tone="success">Accepted</Badge>}
+                      <Link to={paths.hiver(o.hiver_id)} className={s.hint} style={{ textAlign: "left" }}>
+                        View hiver profile
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+        </aside>
+      </div>
+
+      {/* ── Offer modal ──────────────────────────────────────────── */}
+      <OfferModal
+        open={offerOpen}
+        onClose={() => setOfferOpen(false)}
+        onSubmit={async (body) => {
+          await offerService.submit(task.id, body);
+          setOfferOpen(false);
+          await load();
+        }}
+      />
+
+      {/* ── Review modal ─────────────────────────────────────────── */}
+      <ReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        onSubmit={async (body) => {
+          await reviewService.submit(task.id, body);
+          setReviewOpen(false);
+          await load();
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Offer form modal ──────────────────────────────────────────────────────────
+function OfferModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (b: { price: number; message: string; estimated_hours: number }) => Promise<void>;
+}) {
+  const [price, setPrice] = useState("");
+  const [hours, setHours] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await onSubmit({ price: Number(price), estimated_hours: Number(hours), message });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Make an offer">
+      <form className={s.form} onSubmit={submit}>
+        {error && <p className={s.error}>{error}</p>}
+        <div className={s.field}>
+          <label className={s.label}>Your price (BGN)</label>
+          <input className={s.input} type="number" min={1} value={price}
+            onChange={(e) => setPrice(e.target.value)} required />
+        </div>
+        <div className={s.field}>
+          <label className={s.label}>Estimated hours</label>
+          <input className={s.input} type="number" min={0.5} step={0.5} value={hours}
+            onChange={(e) => setHours(e.target.value)} required />
+        </div>
+        <div className={s.field}>
+          <label className={s.label}>Message to the client</label>
+          <textarea className={s.textarea} value={message}
+            onChange={(e) => setMessage(e.target.value)} placeholder="Introduce yourself and how you'll help…" required />
+        </div>
+        <Button type="submit" block disabled={busy}>{busy ? "Sending…" : "Submit offer"}</Button>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Review form modal ─────────────────────────────────────────────────────────
+function ReviewModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (b: { rating: number; comment: string }) => Promise<void>;
+}) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await onSubmit({ rating, comment });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Leave a review">
+      <form className={s.form} onSubmit={submit}>
+        {error && <p className={s.error}>{error}</p>}
+        <div className={s.field}>
+          <label className={s.label}>Rating</label>
+          <div className={s.starPick}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button type="button" key={n} className={`${s.starBtn} ${n <= rating ? s.starOn : ""}`}
+                onClick={() => setRating(n)} aria-label={`${n} stars`}>
+                <StarIcon size={28} filled={n <= rating} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={s.field}>
+          <label className={s.label}>Comment</label>
+          <textarea className={s.textarea} value={comment} minLength={3}
+            onChange={(e) => setComment(e.target.value)} placeholder="How did it go?" required />
+        </div>
+        <Button type="submit" block disabled={busy}>{busy ? "Submitting…" : "Submit review"}</Button>
+      </form>
+    </Modal>
+  );
+}

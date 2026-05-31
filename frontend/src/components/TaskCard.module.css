@@ -1,0 +1,43 @@
+.card {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+  text-align: left;
+  height: 100%;
+}
+.glyph {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--honey-600);
+  background: var(--honey-100);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.title {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  line-height: 1.2;
+}
+.sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-400);
+}
+.meta { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: 2px; }
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ink-600);
+}
+.foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: 4px; }
