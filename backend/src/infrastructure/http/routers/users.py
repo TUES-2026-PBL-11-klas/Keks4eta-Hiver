@@ -11,6 +11,7 @@ from src.application.dtos.user_dtos import (
     HiverProfileResponse,
     UpdateHiverAvailabilityRequest,
     HiverSearchResult,
+    MeResponse,
 )
 from src.application.use_cases.users.find_hivers_nearby_use_case import (
     FindHiversNearbyUseCase,
@@ -24,6 +25,50 @@ from src.infrastructure.database.repositories.review_repository import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/me", response_model=MeResponse)
+async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
+    """Return the currently authenticated user (role-aware)."""
+    user_id = payload["sub"]
+    if payload.get("role") == "hiver":
+        hiver = await PostgresHiverRepository(session).find_by_id(user_id)
+        if hiver is None:
+            raise HiverNotFoundError(user_id)
+        return MeResponse(
+            id=hiver.id,
+            email=hiver.email,
+            full_name=hiver.full_name,
+            role="hiver",
+            phone=hiver.phone,
+            avatar_url=hiver.avatar_url,
+            is_oauth=hiver.oauth_provider is not None,
+            bio=hiver.bio or "",
+            level=hiver.level,
+            xp_points=hiver.xp_points,
+            avg_rating=float(hiver.avg_rating.value),
+            completed_tasks=hiver.completed_tasks,
+            review_count=hiver.review_count,
+            is_available_now=hiver.is_available_now,
+            work_radius_km=hiver.work_radius.km,
+            skills=hiver.skills,
+        )
+
+    client = await PostgresClientRepository(session).find_by_id(user_id)
+    if client is None:
+        raise ClientNotFoundError(user_id)
+    return MeResponse(
+        id=client.id,
+        email=client.email,
+        full_name=client.full_name,
+        role="client",
+        phone=client.phone,
+        avatar_url=client.avatar_url,
+        is_oauth=client.oauth_provider is not None,
+        rating_as_client=float(client.rating_as_client.value),
+        total_tasks=client.total_tasks,
+        review_count=client.review_count,
+    )
 
 
 @router.get("/hivers/nearby", response_model=list[HiverSearchResult])

@@ -11,11 +11,13 @@ class UserModel(Base):
 
     id:            Mapped[str]      = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     email:         Mapped[str]      = mapped_column(String(255), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str]      = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str|None] = mapped_column(String(255), nullable=True)  # NULL for OAuth-only accounts
     full_name:     Mapped[str]      = mapped_column(String(100), nullable=False)
     phone:         Mapped[str|None] = mapped_column(String(20))
     avatar_url:    Mapped[str|None] = mapped_column(String(500))
     role:          Mapped[str]      = mapped_column(String(10), nullable=False)  # 'client' | 'hiver'
+    oauth_provider:Mapped[str|None] = mapped_column(String(20))   # 'google' | 'facebook' | NULL
+    oauth_id:      Mapped[str|None] = mapped_column(String(255))  # provider's stable subject id
     is_active:     Mapped[bool]     = mapped_column(Boolean, default=True)
     created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

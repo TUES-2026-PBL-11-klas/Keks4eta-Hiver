@@ -125,12 +125,18 @@ class IClientRepository(IRepository[Client, str], ABC):
     async def find_by_email(self, email: str) -> Client | None: ...
 
     @abstractmethod
+    async def find_by_oauth(self, provider: str, oauth_id: str) -> Client | None: ...
+
+    @abstractmethod
     async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Client]: ...
 
 
 class IHiverRepository(IRepository[Hiver, str], ABC):
     @abstractmethod
     async def find_by_email(self, email: str) -> Hiver | None: ...
+
+    @abstractmethod
+    async def find_by_oauth(self, provider: str, oauth_id: str) -> Hiver | None: ...
 
     @abstractmethod
     async def find_available_near(

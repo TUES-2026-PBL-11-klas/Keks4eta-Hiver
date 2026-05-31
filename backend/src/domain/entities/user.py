@@ -22,12 +22,16 @@ class User(ABC):
     """
     id: str
     email: str
-    _password_hash: str
+    _password_hash: str | None
     full_name: str
     phone: str | None = None
     avatar_url: str | None = None
     is_active: bool = True
     created_at: datetime = field(default_factory=datetime.utcnow)
+    # Social login: set when the account was created via Google/Facebook.
+    # password_hash is None for OAuth-only accounts.
+    oauth_provider: str | None = None   # "google" | "facebook" | None
+    oauth_id: str | None = None         # the provider's stable user id ("sub")
 
     def __post_init__(self) -> None:
         self._validate_email(self.email)
@@ -47,7 +51,13 @@ class User(ABC):
         ...
 
     def verify_password(self, plain: str) -> bool:
-        """Encapsulated: password logic stays inside User."""
+        """Encapsulated: password logic stays inside User.
+
+        OAuth-only accounts have no password hash — they can never be
+        authenticated with a password and must use social login.
+        """
+        if self._password_hash is None:
+            return False
         from passlib.context import CryptContext
         return CryptContext(schemes=["bcrypt"], deprecated="auto").verify(plain, self._password_hash)
 
@@ -61,7 +71,7 @@ class User(ABC):
         self.is_active = False
 
     @property
-    def password_hash(self) -> str:
+    def password_hash(self) -> str | None:
         return self._password_hash
 
 
