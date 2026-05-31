@@ -35,6 +35,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 3 | Database Migrations | ✅ Done | `c12b244` |
 | 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ⏳ In progress — domain unit tests done (97, all green); CI/templates/CODEOWNERS/dependabot in place; use-case + integration tests next | — |
+| 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
 
 ---
 
@@ -57,6 +58,8 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Redis 7** | external | Fast in-memory store for sessions and rate limiting | Cache layer |
 | **python-jose** | ≥3.3 | Encodes and decodes JWT tokens | Auth token generation |
 | **passlib[bcrypt]** | ≥1.7 | Hashes passwords with bcrypt — never stores plain text | Password security |
+| **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
+| **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
 | **Stripe** | ≥9.0 | Payment intents with manual capture for escrow hold/release | Payments |
 | **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Google Maps, Supabase) | External API calls |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
@@ -82,13 +85,16 @@ Supabase is used only for **Storage** (task images) and **Realtime** (push notif
 | **TypeScript 5** | 5.4.5 | Type safety — catches API contract mismatches at compile time | Language layer |
 | **Vite 5** | 5.3.1 | Much faster than Webpack, native ES modules, instant HMR | Build tool & dev server |
 | **CSS Modules** | built-in | Scoped styles per component, no global class name collisions | Component styling |
+| **Framer Motion** | ≥11.3 | Declarative animation — scroll-reveals, page transitions, modal enter/exit | Motion / animation |
 
 **Design system — "The Hive":** warm editorial-utilitarian direction built on the existing brand.
 - **Palette:** Honey (`#EE7F22`) + deep navy ink (`#00224F`) on a warm paper field (`#FBEFE0`); tints and tones are exposed as CSS custom properties in `src/index.css` (`--honey*`, `--ink*`, `--paper`, `--card`, `--line`, semantic state colors).
 - **Type:** tri-font system — **Fraunces** (optical serif) for display/brand, **Hanken Grotesk** for body, **Space Mono** kept deliberately for prices/tags/meta (a callback to the original identity). Loaded via Google Fonts in `index.html`.
-- **Motif:** honeycomb — hexagon brand mark, hex category glyphs, hex avatars, a faint honeycomb texture behind the device, and a raised hex "Post" action in the tab bar.
-- **Layout:** one shared `AppShell` (centered phone-frame device, slim brand bar, bottom tab nav) wraps every route; the tab bar is hidden on auth routes. Replaces the old per-page `PageFrame`/floating `NavBar` split.
-- **Components:** `AppShell`, `Input` (label + left/right icon slots), and a stroke-based SVG `icons` set replace all emoji iconography. Motion: staggered page-load reveals via a global `.rise` helper, with `prefers-reduced-motion` honored.
+- **Responsive scale:** fluid type (`clamp()`), spacing scale, container-width and breakpoint tokens in `index.css` drive a single layout across phone → tablet → desktop.
+- **Motif:** honeycomb — hexagon brand mark, hex category glyphs, hex avatars, a faint honeycomb texture wash, and a raised hex "Post" action in the mobile tab bar.
+- **Layout:** one **responsive `AppShell`** wraps every route — a fixed left sidebar + top bar on desktop (≥1024px), inline top nav on tablet, and a bottom tab bar on phone (<640px). Chrome is hidden on auth routes. Replaces the old fixed 440px phone-frame device.
+- **Components:** reusable UI primitives in `components/ui/` (`Button`, `Card`, `Badge`, `Avatar`, `Skeleton`, `Spinner`, `EmptyState`, `Stars`), `Modal`, `TaskCard`, `Reveal` (scroll-into-view), `Input`, `ProtectedRoute`, and a stroke-based SVG `icons` set. Motion: scroll reveals + route transitions via Framer Motion, all honoring `prefers-reduced-motion`.
+- **State:** `AuthContext` (`useAuth`) holds the session, hydrates from `GET /users/me`, and transparently refreshes expired access tokens; a typed `lib/services.ts` wraps every backend endpoint.
 
 ---
 
@@ -190,12 +196,12 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 15 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 16 Alembic migrations that build the full schema from scratch in order.
 
 **SQLAlchemy Models (13 tables):**
 `users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
 
-**The 15 Migrations:**
+**The 16 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -213,6 +219,7 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 | 013 | create_all_indexes | Performance indexes: partial (WHERE status='open'), composite, GIST |
 | 014 | create_plpgsql_functions | 3 triggers + 1 stored function (see below) |
 | 015 | create_views | `hiver_earnings_monthly` view with window functions |
+| 016 | add_oauth_to_users | `password_hash` made nullable; `oauth_provider` + `oauth_id` columns; partial unique index on (provider, id) for social login |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -363,6 +370,39 @@ hiver_earnings_monthly
 
 ---
 
+### Phase 6 — Responsive Frontend + Social Login ✅
+
+**What it is:** Turning the phone-only mockup into a true responsive web app, wiring every backend
+endpoint to a real page, and adding Google/Facebook sign-in.
+
+**Backend:**
+- **Social login (Authlib)** — `GET /auth/oauth/{provider}/login` → provider consent →
+  `GET /auth/oauth/{provider}/callback` exchanges the code, runs `OAuthLoginUseCase`
+  (find-by-provider → link-by-email → create passwordless account), and redirects to the SPA with
+  tokens in the URL fragment. Domain `User` gained nullable `password_hash` + `oauth_provider`/
+  `oauth_id` (migration 016). Providers are read from env; an unconfigured provider returns a clear
+  503 instead of a 500.
+- **`POST /auth/refresh`** — rotates an access/refresh pair (role resolved from the repositories).
+- **`GET /users/me`** — role-aware current-user endpoint the SPA hydrates from.
+- **`/api/v1` prefix** — all feature routers are now mounted under `/api/v1` (matching what the SPA
+  always expected); `/health` stays at the root. `SessionMiddleware` added for the OAuth state cookie.
+
+**Frontend:**
+- **Responsive `AppShell`** — desktop sidebar + top bar, tablet inline nav, phone bottom-tab bar;
+  fluid type + spacing tokens; replaces the fixed 440px device frame.
+- **Auth layer** — `AuthContext`/`useAuth`, `/auth/callback` route, `ProtectedRoute` guard,
+  transparent refresh-on-401, Google + Facebook buttons on Login/Register.
+- **Pages** — Home (responsive hero + reveals), Tasks (filters + grid), TaskDetail (full lifecycle:
+  offers submit/accept, start/complete/cancel, escrow release, reviews), PostTask, Dashboard
+  (client tasks / hiver stats + availability), NearbyHivers (PostGIS search), Profile (editable
+  availability), PublicProfile (hiver/client + reviews).
+- **Motion** — Framer Motion scroll reveals + route transitions, `prefers-reduced-motion` aware.
+
+**Verification:** frontend `tsc` typecheck + `eslint` (max-warnings 0) + `vite build` all pass;
+backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases green).
+
+---
+
 ## Design Patterns Reference
 
 | Pattern | Where | Purpose |
@@ -413,7 +453,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–015 Alembic migrations
+│           │   ├── migrations/versions/  001–016 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver
@@ -424,11 +464,15 @@ Keks4eta-Hiver/
 │           └── storage/
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/                        Home, Login, Register, Tasks, Profile
-│   │   ├── components/                   Input, Logo, NavBar, PageFrame, SectionCard
-│   │   ├── lib/api.ts                    HTTP client with Bearer token injection
-│   │   ├── hooks/useFetch.ts             Generic data-fetch hook
-│   │   └── types/index.ts                User, Task, Offer TypeScript interfaces
+│   │   ├── pages/                        Home, Login, Register, AuthCallback, Tasks,
+│   │   │                                 TaskDetail, PostTask, Dashboard, NearbyHivers,
+│   │   │                                 Profile, PublicProfile
+│   │   ├── components/                   AppShell, ProtectedRoute, TaskCard, Modal, Reveal,
+│   │   │                                 Input, icons, ui/ (Button, Card, Badge, Avatar, …)
+│   │   ├── context/AuthContext.tsx       Session state, /users/me hydrate, token refresh
+│   │   ├── lib/api.ts                    HTTP client (Bearer + refresh-on-401)
+│   │   ├── lib/services.ts               Typed wrappers for every backend endpoint
+│   │   └── types/index.ts                Me, Task, Offer, Review, profiles, … interfaces
 │   └── Dockerfile                        Node build → Nginx serve
 ├── infra/
 │   ├── prometheus/                       prometheus.yml + alerts.yml

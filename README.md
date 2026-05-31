@@ -14,6 +14,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 3 | Database migrations + seed | ✅ Done | `c12b244` |
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
+| 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
 
 ## Tech Stack (short)
 
@@ -22,13 +23,13 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (15 chained) |
+| Migrations | Alembic (16 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
-| Auth | JWT (python-jose) + passlib[bcrypt] |
+| Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
 | Payments | Stripe (manual capture for escrow) |
 | Storage | Supabase Storage (task images) |
-| Frontend | React 18 + TypeScript 5 + Vite 5 |
+| Frontend | React 18 + TypeScript 5 + Vite 5 + Framer Motion (responsive web app) |
 | Container | Docker (multi-stage) + docker-compose |
 | Infra (target) | Kubernetes + Helm + Terraform |
 | Observability | Prometheus + Grafana |
@@ -47,7 +48,7 @@ hiver/
 │   │   ├── infrastructure/    database, http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
-│   ├── alembic/               migrations 001–015 + seeds
+│   ├── alembic/               migrations 001–016 + seeds
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/          Vite + React + TypeScript
@@ -84,6 +85,28 @@ uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 - Health:    http://localhost:8000/health
 - Grafana:   http://localhost:3001 (admin/admin)
 
+### Social login (optional)
+
+Password login works out of the box. To enable Google/Facebook sign-in, set the OAuth
+credentials in `.env` (see `.env.example`):
+
+- **Google** — create an OAuth client (type *Web application*) at the
+  [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and add the
+  redirect URI `http://localhost:8000/api/v1/auth/oauth/google/callback`.
+- **Facebook** — add the *Facebook Login* product at
+  [Meta for Developers](https://developers.facebook.com/apps) and set the valid OAuth redirect
+  URI `http://localhost:8000/api/v1/auth/oauth/facebook/callback`.
+
+Leave a provider's credentials blank to disable it (the login button returns a clear "not
+configured" response instead of erroring).
+
+### Shared cloud database & real services
+
+To have the **whole team share one database** (no local Postgres) and to turn the
+scaffolded integrations (Stripe, storage, maps, push) into real ones, see
+[`docs/CLOUD_SETUP.md`](./docs/CLOUD_SETUP.md). Short version: point `DATABASE_URL` at a
+Supabase project and set `DATABASE_USE_POOLER=true`.
+
 ## Development
 
 ```bash
@@ -102,11 +125,18 @@ npm run dev                     # http://localhost:5173
 
 ## API Endpoints (current)
 
+> All feature endpoints are mounted under **`/api/v1`** (e.g. `POST /api/v1/auth/login`).
+> `/health` stays at the root. The SPA's API base is `/api/v1` (override with `VITE_API_BASE`).
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET    | `/health` | – | Health check |
+| GET    | `/health` | – | Health check (root, no prefix) |
 | POST   | `/auth/register` | – | Sign up — **rate-limited 5/min/IP** |
 | POST   | `/auth/login` | – | Get JWT access + refresh — **rate-limited 10/min/IP** |
+| POST   | `/auth/refresh` | – | Exchange refresh token for a fresh token pair |
+| GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (`?role=client\|hiver`) |
+| GET    | `/auth/oauth/{provider}/callback` | – | Provider redirect → issues JWT, redirects to SPA |
+| GET    | `/users/me` | Auth | Current authenticated user (role-aware) |
 | POST   | `/tasks` | Client | Post a task |
 | GET    | `/tasks` | Client | List my tasks (paginated) |
 | GET    | `/tasks/search` | – | Public search: vertical, status, urgency, budget range |
