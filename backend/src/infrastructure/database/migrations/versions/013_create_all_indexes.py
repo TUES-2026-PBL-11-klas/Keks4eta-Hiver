@@ -32,11 +32,12 @@ def upgrade() -> None:
         WHERE is_available_now = true
     """)
 
-    # Partial index: active boosts only (99% of boost queries filter by expiry)
+    # Active-boost lookups filter by expiry. A partial index can't use NOW()
+    # (Postgres only allows IMMUTABLE functions in index predicates), so include
+    # expires_at as a trailing column — queries `WHERE expires_at > NOW()` still use it.
     op.execute("""
         CREATE INDEX ix_boosts_active
-        ON boosts (hiver_id, vertical)
-        WHERE expires_at > NOW()
+        ON boosts (hiver_id, vertical, expires_at)
     """)
 
     # Composite index: unread notifications per user

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import ValidationError
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -38,10 +39,19 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Short-lived signed cookie used only to carry OAuth state/nonce + chosen role
+# across the provider round-trip. Not used for app authentication (JWT does that).
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.jwt_secret_key,
+    same_site="lax",
+    https_only=settings.app_env == "production",
 )
 
 app.state.limiter = limiter
@@ -51,11 +61,11 @@ app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(ValidationError, validation_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
-app.include_router(auth.router)
-app.include_router(tasks.router)
-app.include_router(offers.router)
-app.include_router(users.router)
-app.include_router(payments.router)
+app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(tasks.router, prefix=settings.api_prefix)
+app.include_router(offers.router, prefix=settings.api_prefix)
+app.include_router(users.router, prefix=settings.api_prefix)
+app.include_router(payments.router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["health"])

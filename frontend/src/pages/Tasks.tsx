@@ -1,106 +1,134 @@
-import type { CSSProperties } from "react";
-import { useFetch } from "@/hooks/useFetch";
-import type { Task } from "@/types";
-import { PinIcon, WalletIcon, BoltIcon, Hexagon } from "@/components/icons";
-import styles from "./Tasks.module.css";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { taskService } from "@/lib/services";
+import { VERTICALS } from "@/constants/routes";
+import { TaskCard } from "@/components/TaskCard";
+import { Button, EmptyState, Skeleton } from "@/components/ui";
+import { Reveal } from "@/components/Reveal";
+import { BoltIcon, Hexagon } from "@/components/icons";
+import type { Paginated, TaskSummary, Vertical } from "@/types";
+import s from "./Tasks.module.css";
 
-const d = (ms: number): CSSProperties => ({ ["--d"]: `${ms}ms` } as CSSProperties);
-
-const STATUS_LABEL: Record<Task["status"], string> = {
-  open: "Open",
-  in_progress: "In progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-function budget(task: Task): string | null {
-  if (task.budget_min == null && task.budget_max == null) return null;
-  if (task.budget_min != null && task.budget_max != null)
-    return `${task.budget_min}–${task.budget_max} BGN`;
-  return `${task.budget_min ?? task.budget_max} BGN`;
-}
+const cx = (...c: (string | false)[]) => c.filter(Boolean).join(" ");
 
 export default function Tasks() {
-  const { data, loading, error } = useFetch<Task[]>("/tasks");
+  const [params, setParams] = useSearchParams();
+  const vertical = (params.get("vertical") as Vertical | null) ?? undefined;
+  const urgentOnly = params.get("urgent") === "1";
+  const [page, setPage] = useState(1);
+
+  const [data, setData] = useState<Paginated<TaskSummary> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    taskService
+      .search({ vertical, is_urgent: urgentOnly || undefined, page, page_size: 12 })
+      .then((res) => active && setData(res))
+      .catch((e) => active && setError((e as Error).message))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [vertical, urgentOnly, page]);
+
+  function setVertical(v?: Vertical) {
+    const next = new URLSearchParams(params);
+    if (v) next.set("vertical", v);
+    else next.delete("vertical");
+    setParams(next);
+    setPage(1);
+  }
+
+  function toggleUrgent() {
+    const next = new URLSearchParams(params);
+    if (urgentOnly) next.delete("urgent");
+    else next.set("urgent", "1");
+    setParams(next);
+    setPage(1);
+  }
+
+  const items = data?.items ?? [];
 
   return (
-    <div className={styles.page}>
-      <header className={styles.head}>
-        <p className={styles.eyebrow}>Marketplace</p>
-        <h1 className={styles.title}>Open tasks</h1>
-        <p className={styles.count}>
-          {data ? `${data.length} task${data.length === 1 ? "" : "s"} nearby` : "Finding tasks near you…"}
+    <div className="page-wrap">
+      <header className={s.head}>
+        <p className={s.eyebrow}>Marketplace</p>
+        <h1 className={s.title}>Open tasks</h1>
+        <p className={s.count}>
+          {loading ? "Finding tasks near you…" : `${data?.total ?? 0} task${data?.total === 1 ? "" : "s"} found`}
         </p>
       </header>
 
+      <div className={s.filters}>
+        <button className={cx(s.chip, !vertical && s.chipOn)} onClick={() => setVertical(undefined)}>
+          All
+        </button>
+        {VERTICALS.map((v) => (
+          <button
+            key={v.value}
+            className={cx(s.chip, vertical === v.value && s.chipOn)}
+            onClick={() => setVertical(v.value)}
+          >
+            {v.label}
+          </button>
+        ))}
+        <span className={s.divider} />
+        <button className={cx(s.chip, urgentOnly && s.chipOn)} onClick={toggleUrgent}>
+          <BoltIcon size={14} /> Urgent
+        </button>
+      </div>
+
       {loading && (
-        <div className={styles.list}>
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`${styles.card} ${styles.skeleton}`} aria-hidden="true" />
+        <div className={s.grid}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className={s.skel} height={120} radius={22} />
           ))}
         </div>
       )}
 
-      {error && (
-        <div className={styles.notice}>
-          <p className={styles.noticeTitle}>Couldn't load tasks</p>
-          <p className={styles.noticeBody}>{error}</p>
-        </div>
+      {!loading && error && (
+        <EmptyState icon={<Hexagon size={28} />} title="Couldn't load tasks">
+          {error}
+        </EmptyState>
       )}
 
-      {data && data.length === 0 && (
-        <div className={styles.empty}>
-          <span className={styles.emptyHex}>
-            <Hexagon size={30} fill="var(--honey-100)" />
-          </span>
-          <p className={styles.emptyTitle}>The hive's quiet right now</p>
-          <p className={styles.emptyBody}>No open tasks yet — check back soon.</p>
-        </div>
+      {!loading && !error && items.length === 0 && (
+        <EmptyState icon={<Hexagon size={28} fill="currentColor" />} title="The hive's quiet here">
+          No open tasks match these filters yet — try clearing them or check back soon.
+        </EmptyState>
       )}
 
-      {data && data.length > 0 && (
-        <div className={styles.list}>
-          {data.map((task, i) => {
-            const b = budget(task);
-            return (
-              <article key={task.id} className={`${styles.card} rise`} style={d(i * 60)}>
-                <span className={styles.glyph} aria-hidden="true">
-                  {task.vertical.charAt(0).toUpperCase()}
-                </span>
+      {!loading && !error && items.length > 0 && (
+        <>
+          <div className={s.grid}>
+            {items.map((task, i) => (
+              <Reveal key={task.id} delay={Math.min(i, 6) * 0.04}>
+                <TaskCard task={task} />
+              </Reveal>
+            ))}
+          </div>
 
-                <div className={styles.cardMain}>
-                  <div className={styles.cardTop}>
-                    <h2 className={styles.cardTitle}>{task.subcategory}</h2>
-                    {task.is_urgent && (
-                      <span className={styles.urgent}>
-                        <BoltIcon size={12} /> Urgent
-                      </span>
-                    )}
-                  </div>
-
-                  <p className={styles.vertical}>{task.vertical}</p>
-
-                  <div className={styles.meta}>
-                    {task.location_display && (
-                      <span className={styles.metaItem}>
-                        <PinIcon size={14} /> {task.location_display}
-                      </span>
-                    )}
-                    {b && (
-                      <span className={styles.metaItem}>
-                        <WalletIcon size={14} /> {b}
-                      </span>
-                    )}
-                  </div>
-
-                  <span className={`${styles.status} ${styles[task.status]}`}>
-                    {STATUS_LABEL[task.status]}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+          {(data!.total > data!.page_size) && (
+            <div className={s.pager}>
+              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              <span>Page {data!.page} of {Math.max(1, Math.ceil(data!.total / data!.page_size))}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page * data!.page_size >= data!.total}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

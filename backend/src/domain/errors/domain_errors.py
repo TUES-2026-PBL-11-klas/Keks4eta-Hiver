@@ -133,6 +133,18 @@ class InvalidTokenError(AppError):
     def __init__(self) -> None:
         super().__init__("Token is invalid", "INVALID_TOKEN", 401)
 
+class OAuthProviderNotConfiguredError(AppError):
+    def __init__(self, provider: str) -> None:
+        super().__init__(
+            f"Social login provider '{provider}' is not configured on this server",
+            "OAUTH_NOT_CONFIGURED",
+            503,
+        )
+
+class OAuthError(AppError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"Social login failed: {detail}", "OAUTH_FAILED", 401)
+
 
 # ── Validation ─────────────────────────────────────────────────────────────
 

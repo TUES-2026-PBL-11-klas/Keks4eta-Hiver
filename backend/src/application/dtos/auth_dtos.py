@@ -29,6 +29,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class OAuthUserInfo(BaseModel):
+    """Normalized identity returned by a social provider after token exchange."""
+    provider: Literal["google", "facebook"]
+    oauth_id: str
+    email: EmailStr
+    full_name: str
+    avatar_url: str | None = None
+    role: Literal["client", "hiver"] = "client"  # role for first-time accounts
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
