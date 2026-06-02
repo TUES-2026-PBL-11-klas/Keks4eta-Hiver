@@ -5,6 +5,7 @@ from src.domain.errors.domain_errors import (
 from src.domain.entities.task import TaskStatus
 from src.domain.interfaces.repositories import ITaskRepository, ITransactionRepository
 from src.domain.interfaces.ports import IPaymentPort
+from src.domain.services.event_bus import EventBus, notify
 
 
 class ReleaseEscrowUseCase:
@@ -23,10 +24,12 @@ class ReleaseEscrowUseCase:
         task_repo: ITaskRepository,
         transaction_repo: ITransactionRepository,
         payment_port: IPaymentPort,
+        event_bus: EventBus | None = None,
     ) -> None:
         self._task_repo = task_repo
         self._transaction_repo = transaction_repo
         self._payment_port = payment_port
+        self._event_bus = event_bus
 
     async def execute(self, task_id: str, client_id: str) -> dict:
         task = await self._task_repo.find_by_id(task_id)
@@ -52,6 +55,14 @@ class ReleaseEscrowUseCase:
         await self._payment_port.release_payment(transaction.stripe_payment_intent_id)
         transaction.release()
         await self._transaction_repo.save(transaction)
+
+        await notify(
+            self._event_bus,
+            transaction.hiver_id,
+            "Payment released",
+            f"{float(transaction.hiver_payout.value):.2f} BGN was released to you for '{task.title}'.",
+            {"task_id": task_id},
+        )
 
         return {
             "task_id": task_id,

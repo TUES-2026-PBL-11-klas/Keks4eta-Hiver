@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.infrastructure.http.dependencies import SessionDep, ClientDep, UserPayloadDep
+from src.infrastructure.http.dependencies import SessionDep, ClientDep, UserPayloadDep, EventBusDep
 from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
 from src.infrastructure.database.repositories.transaction_repository import PostgresTransactionRepository
 from src.application.use_cases.payments.release_escrow_use_case import ReleaseEscrowUseCase
@@ -29,10 +29,12 @@ async def release_escrow(
     task_id: str,
     session: SessionDep,
     client: ClientDep,
+    bus: EventBusDep,
 ) -> dict:
     use_case = ReleaseEscrowUseCase(
         task_repo=PostgresTaskRepository(session),
         transaction_repo=PostgresTransactionRepository(session),
         payment_port=get_payment_port(),
+        event_bus=bus,
     )
     return await use_case.execute(task_id=task_id, client_id=client.id)

@@ -23,7 +23,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (16 chained) |
+| Migrations | Alembic (17 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
 | Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
@@ -48,7 +48,7 @@ hiver/
 │   │   ├── infrastructure/    database, http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
-│   ├── alembic/               migrations 001–016 + seeds
+│   ├── alembic/               migrations 001–017 + seeds
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/          Vite + React + TypeScript
@@ -151,6 +151,10 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
 | GET    | `/payments/tasks/{id}` | Auth | Escrow status for a task (client + assigned hiver) |
 | POST   | `/payments/tasks/{id}/release` | Client | Release escrow to hiver |
+| GET    | `/notifications` | Auth | In-app notification feed (Observer/EventBus) |
+| GET    | `/notifications/unread_count` | Auth | Unread badge count (SPA polls this) |
+| POST   | `/notifications/{id}/read` | Auth | Mark one notification read |
+| POST   | `/notifications/read-all` | Auth | Mark all notifications read |
 | GET    | `/users/{id}/reviews` | – | All revealed reviews received by user |
 | GET    | `/users/clients/{id}` | – | Client profile |
 | GET    | `/users/hivers/{id}` | – | Hiver profile |
@@ -161,7 +165,10 @@ Escrow is now functional end-to-end via a mock payment adapter — accepting an 
 funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live
 `STRIPE_SECRET_KEY`; `payment_factory.get_payment_port` picks the adapter).
 
-Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, Supabase Storage adapter, notification adapter.
+In-app notifications are live: use cases publish to a request-scoped `EventBus` (Observer) whose
+subscriber persists to `notification_log`; the SPA polls the unread count and shows a bell.
+
+Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, Supabase Storage adapter, real push (FCM) adapter.
 
 ## Graded Subjects
 
@@ -169,5 +176,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 15 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view |
+| **БД** (Databases) | 17 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |

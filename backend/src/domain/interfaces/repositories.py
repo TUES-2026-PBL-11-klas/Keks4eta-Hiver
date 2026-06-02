@@ -8,6 +8,7 @@ from domain.entities.task import Task
 from domain.entities.offer import Offer
 from domain.entities.transaction import Transaction
 from domain.entities.review import Review
+from domain.entities.notification import Notification
 from domain.value_objects.location import Location
 
 T = TypeVar("T")
@@ -164,6 +165,24 @@ class ITransactionRepository(IRepository[Transaction, str], ABC):
 
     @abstractmethod
     async def find_by_hiver(self, hiver_id: str) -> list[Transaction]: ...
+
+
+class INotificationRepository(ABC):
+    """Read side of the in-app notification feed (writes go through INotificationPort)."""
+
+    @abstractmethod
+    async def list_for_user(
+        self, user_id: str, only_unread: bool = False, limit: int = 50
+    ) -> list[Notification]: ...
+
+    @abstractmethod
+    async def count_unread(self, user_id: str) -> int: ...
+
+    @abstractmethod
+    async def mark_read(self, notification_id: str, user_id: str) -> bool: ...
+
+    @abstractmethod
+    async def mark_all_read(self, user_id: str) -> int: ...
 
 
 class IReviewRepository(IRepository[Review, str], ABC):

@@ -21,6 +21,7 @@ from src.infrastructure.http.routers import tasks
 from src.infrastructure.http.routers import offers
 from src.infrastructure.http.routers import users
 from src.infrastructure.http.routers import payments
+from src.infrastructure.http.routers import notifications
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(tasks.router, prefix=settings.api_prefix)
 app.include_router(offers.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(payments.router, prefix=settings.api_prefix)
+app.include_router(notifications.router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["health"])

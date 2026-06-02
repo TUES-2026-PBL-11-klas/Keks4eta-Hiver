@@ -36,3 +36,34 @@ class EventBus:
             self._handlers.pop(event_type, None)
         else:
             self._handlers.clear()
+
+
+NOTIFY_EVENT = "notify"
+
+
+async def notify(
+    bus: "EventBus | None",
+    recipient_id: str,
+    title: str,
+    body: str,
+    data: dict | None = None,
+) -> None:
+    """
+    Convenience for use cases: emit a notification event if a bus is wired.
+    Optional by design — unit tests construct use cases without a bus and these
+    calls become no-ops, while the HTTP layer injects a request-scoped bus whose
+    subscriber persists the notification (Observer pattern).
+    """
+    if bus is None:
+        return
+    await bus.publish(
+        DomainEvent(
+            event_type=NOTIFY_EVENT,
+            payload={
+                "recipient_id": recipient_id,
+                "title": title,
+                "body": body,
+                "data": data or {},
+            },
+        )
+    )

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 
 from src.infrastructure.http.dependencies import (
-    SessionDep, ClientDep, HiverDep, UserPayloadDep,
+    SessionDep, ClientDep, HiverDep, UserPayloadDep, EventBusDep,
 )
 from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
 from src.infrastructure.database.repositories.review_repository import (
@@ -94,8 +94,9 @@ async def start_task(
     task_id: str,
     session: SessionDep,
     hiver: HiverDep,
+    bus: EventBusDep,
 ) -> TaskDetailResponse:
-    use_case = StartTaskUseCase(task_repo=PostgresTaskRepository(session))
+    use_case = StartTaskUseCase(task_repo=PostgresTaskRepository(session), event_bus=bus)
     return await use_case.execute(task_id=task_id, hiver_id=hiver.id)
 
 
@@ -114,11 +115,13 @@ async def cancel_task(
     task_id: str,
     session: SessionDep,
     client: ClientDep,
+    bus: EventBusDep,
 ) -> TaskDetailResponse:
     use_case = CancelTaskUseCase(
         task_repo=PostgresTaskRepository(session),
         transaction_repo=PostgresTransactionRepository(session),
         payment_port=get_payment_port(),
+        event_bus=bus,
     )
     return await use_case.execute(task_id=task_id, actor_id=client.id)
 

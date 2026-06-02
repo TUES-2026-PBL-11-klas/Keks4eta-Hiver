@@ -101,3 +101,20 @@ export const paymentService = {
   releaseEscrow: (taskId: string) =>
     api.post<{ status: string; hiver_payout: number }>(`/payments/tasks/${taskId}/release`),
 };
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  sent_at: string;
+}
+
+export const notificationService = {
+  list: (onlyUnread = false) =>
+    api.get<AppNotification[]>(`/notifications${qs({ only_unread: onlyUnread })}`),
+  unreadCount: () => api.get<{ unread: number }>("/notifications/unread_count"),
+  markRead: (id: string) => api.post<{ ok: boolean }>(`/notifications/${id}/read`),
+  markAllRead: () => api.post<{ marked: number }>("/notifications/read-all"),
+};

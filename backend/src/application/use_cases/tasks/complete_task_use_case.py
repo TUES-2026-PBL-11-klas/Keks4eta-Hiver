@@ -1,6 +1,7 @@
 from src.domain.errors.domain_errors import TaskNotFoundError
 from src.domain.interfaces.repositories import ITaskRepository, ITransactionRepository
 from src.domain.interfaces.ports import IPaymentPort
+from src.domain.services.event_bus import EventBus, notify
 from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
 from src.application.dtos.task_dtos import TaskDetailResponse
 
@@ -36,10 +37,12 @@ class CancelTaskUseCase:
         task_repo: ITaskRepository,
         transaction_repo: ITransactionRepository | None = None,
         payment_port: IPaymentPort | None = None,
+        event_bus: EventBus | None = None,
     ) -> None:
         self._task_repo = task_repo
         self._transaction_repo = transaction_repo
         self._payment_port = payment_port
+        self._event_bus = event_bus
 
     async def execute(self, task_id: str, actor_id: str) -> TaskDetailResponse:
         task = await self._task_repo.find_by_id(task_id)
@@ -58,5 +61,16 @@ class CancelTaskUseCase:
                     )
                 txn.refund()
                 await self._transaction_repo.save(txn)
+
+        # Notify the other party (whoever didn't click cancel), if there is one.
+        recipient = task.hiver_id if actor_id == task.client_id else task.client_id
+        if recipient and recipient != actor_id:
+            await notify(
+                self._event_bus,
+                recipient,
+                "Task cancelled",
+                f"'{task.title}' was cancelled.",
+                {"task_id": task_id},
+            )
 
         return await GetTaskUseCase(self._task_repo).execute(task_id)

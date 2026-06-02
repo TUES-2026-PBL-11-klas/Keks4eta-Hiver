@@ -196,12 +196,12 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 16 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 17 Alembic migrations that build the full schema from scratch in order.
 
 **SQLAlchemy Models (13 tables):**
 `users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
 
-**The 16 Migrations:**
+**The 17 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -220,6 +220,7 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 | 014 | create_plpgsql_functions | 3 triggers + 1 stored function (see below) |
 | 015 | create_views | `hiver_earnings_monthly` view with window functions |
 | 016 | add_oauth_to_users | `password_hash` made nullable; `oauth_provider` + `oauth_id` columns; partial unique index on (provider, id) for social login |
+| 017 | enable_rls_and_secure_view | Enables Row Level Security (default-deny) on all 14 public tables; recreates `hiver_earnings_monthly` with `security_invoker = on` |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -243,6 +244,17 @@ hiver_earnings_monthly
 -- 3-month rolling average (trend)
 -- Only released transactions
 ```
+
+**Row Level Security (migration 017):** The database is hosted on Supabase, which
+auto-exposes the entire `public` schema through its PostgREST data API (anon key).
+This app never uses that API — the frontend goes through the FastAPI backend over a
+direct Postgres connection — so the auto-API is an unused open door that Supabase's
+security linter flagged (15 ERRORs). Migration 017 enables RLS on all 14 public tables
+with no policies attached, which is *default-deny*: the anon/authenticated API roles get
+nothing, while the backend (connecting as the table owner, which has `BYPASSRLS`) is
+unaffected. The `hiver_earnings_monthly` view is also recreated `WITH (security_invoker
+= on)` so it runs with the caller's privileges and respects that RLS instead of leaking
+earnings past it.
 
 **Why raw SQL for PostGIS columns:** GeoAlchemy2's `Geography` type cannot be used inside Alembic's `op.create_table()` DDL helper — it only works with `op.execute()` raw SQL strings.
 
@@ -327,6 +339,10 @@ hiver_earnings_monthly
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
 | GET | /payments/tasks/{id} | Auth | Escrow status (client + assigned hiver) |
 | POST | /payments/tasks/{id}/release | Client JWT | Release escrow to hiver |
+| GET | /notifications | Auth | In-app notification feed |
+| GET | /notifications/unread_count | Auth | Unread count (SPA polls) |
+| POST | /notifications/{id}/read | Auth | Mark one notification read |
+| POST | /notifications/read-all | Auth | Mark all read |
 | GET | /users/{id}/reviews | None | All revealed reviews received by user |
 | GET | /users/clients/{id} | None | View client profile |
 | GET | /users/hivers/{id} | None | View hiver profile |
@@ -422,7 +438,7 @@ backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases 
 | State Machine | `task.py`, `offer.py`, `transaction.py` | Status transitions validated by methods, not raw assignment |
 | Factory Method | `transaction.py` | `Transaction.create_for_task()` computes fees in one call |
 | Factory + Builder | `domain/services/task_factory.py` | `TaskFactory` dispatches to `HomeTaskBuilder`, `LearnTaskBuilder`, etc. |
-| Observer | `domain/services/event_bus.py` | `EventBus.publish()` → subscribed handlers called automatically |
+| Observer | `domain/services/event_bus.py` + `http/dependencies.py` | Use cases `publish()`; a request-scoped subscriber persists in-app notifications to `notification_log` (offer received/accepted, task started, payment released, task cancelled) |
 | Strategy | `domain/services/search_sort.py` | Pluggable sort algorithm per query |
 | Repository | `domain/interfaces/repositories.py` + `infrastructure/database/repositories/` | Data access abstraction — use cases never touch SQL |
 | Adapter | `infrastructure/payments/{stripe,mock}_payment_adapter.py` | Two `IPaymentPort` impls; `payment_factory.get_payment_port()` selects real Stripe vs functional mock |
@@ -463,7 +479,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–016 Alembic migrations
+│           │   ├── migrations/versions/  001–017 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

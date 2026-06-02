@@ -8,6 +8,7 @@ from src.domain.interfaces.repositories import (
     ITaskRepository, IOfferRepository, ITransactionRepository,
 )
 from src.domain.interfaces.ports import IPaymentPort
+from src.domain.services.event_bus import EventBus, notify
 from src.application.dtos.offer_dtos import OfferResponse
 
 
@@ -30,11 +31,13 @@ class AcceptOfferUseCase:
         offer_repo: IOfferRepository,
         transaction_repo: ITransactionRepository,
         payment_port: IPaymentPort,
+        event_bus: EventBus | None = None,
     ) -> None:
         self._task_repo = task_repo
         self._offer_repo = offer_repo
         self._transaction_repo = transaction_repo
         self._payment_port = payment_port
+        self._event_bus = event_bus
 
     async def execute(self, task_id: str, offer_id: str, client_id: str) -> OfferResponse:
         task = await self._task_repo.find_by_id(task_id)
@@ -77,6 +80,14 @@ class AcceptOfferUseCase:
                 stripe_payment_intent_id=intent_id,
             )
             await self._transaction_repo.save(txn)
+
+        await notify(
+            self._event_bus,
+            offer.hiver_id,
+            "Your offer was accepted",
+            f"You won the job '{task.title}'. Funds are held in escrow — start when ready.",
+            {"task_id": task_id, "offer_id": offer_id},
+        )
 
         return OfferResponse(
             id=offer.id,
