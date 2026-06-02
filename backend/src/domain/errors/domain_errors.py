@@ -42,6 +42,10 @@ class ReviewNotFoundError(NotFoundError):
     def __init__(self, review_id: str):
         super().__init__("Review", review_id)
 
+class DisputeNotFoundError(NotFoundError):
+    def __init__(self, task_id: str):
+        super().__init__("Dispute for task", task_id)
+
 class TransactionNotFoundError(NotFoundError):
     def __init__(self, transaction_id: str):
         super().__init__("Transaction", transaction_id)
@@ -108,6 +112,27 @@ class InvalidOfferPriceError(BusinessRuleViolationError):
         super().__init__(
             f"Offer price {price} is outside task budget range {budget_min}–{budget_max}",
             "INVALID_OFFER_PRICE",
+        )
+
+class DisputeAlreadyExistsError(BusinessRuleViolationError):
+    def __init__(self, task_id: str):
+        super().__init__(
+            f"A dispute has already been opened for task {task_id}",
+            "DISPUTE_ALREADY_EXISTS",
+        )
+
+class DisputeAlreadyResolvedError(BusinessRuleViolationError):
+    def __init__(self, task_id: str):
+        super().__init__(
+            f"The dispute for task {task_id} is already resolved",
+            "DISPUTE_ALREADY_RESOLVED",
+        )
+
+class NoEscrowToDisputeError(BusinessRuleViolationError):
+    def __init__(self, task_id: str):
+        super().__init__(
+            f"Task {task_id} has no held escrow to dispute",
+            "NO_ESCROW_TO_DISPUTE",
         )
 
 

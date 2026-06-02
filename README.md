@@ -152,6 +152,9 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
 | GET    | `/tasks/{id}/messages` | Auth | Chat thread (client + assigned hiver only) |
 | POST   | `/tasks/{id}/messages` | Auth | Send a chat message (notifies the other party) |
+| GET    | `/tasks/{id}/disputes` | Auth | The task's dispute, if any (participants only) |
+| POST   | `/tasks/{id}/disputes` | Auth | Open a dispute — locks escrow as `disputed` |
+| POST   | `/tasks/{id}/disputes/resolve` | Auth | Resolve by concession (client→release, hiver→refund) |
 | GET    | `/payments/tasks/{id}` | Auth | Escrow status for a task (client + assigned hiver) |
 | POST   | `/payments/tasks/{id}/release` | Client | Release escrow to hiver |
 | GET    | `/notifications` | Auth | In-app notification feed (Observer/EventBus) |

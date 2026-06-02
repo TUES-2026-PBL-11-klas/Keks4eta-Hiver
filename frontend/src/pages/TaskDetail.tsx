@@ -3,12 +3,14 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES, paths } from "@/constants/routes";
 import {
+  disputeService,
   messageService,
   offerService,
   paymentService,
   reviewService,
   taskService,
   type ChatMessage,
+  type Dispute,
   type Escrow,
 } from "@/lib/services";
 import { budgetLabel } from "@/lib/format";
@@ -36,6 +38,8 @@ export default function TaskDetail() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [escrow, setEscrow] = useState<Escrow | null>(null);
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -69,11 +73,17 @@ export default function TaskDetail() {
       if (user && t.client_id === user.id) {
         setOffers(await offerService.forTask(id).catch(() => []));
       }
-      // Escrow is visible to the owning client and the assigned hiver.
+      // Escrow + dispute are visible to the owning client and the assigned hiver.
       if (user && (t.client_id === user.id || t.hiver_id === user.id)) {
-        setEscrow(await paymentService.getEscrow(id).catch(() => null));
+        const [esc, dsp] = await Promise.all([
+          paymentService.getEscrow(id).catch(() => null),
+          disputeService.get(id).catch(() => null),
+        ]);
+        setEscrow(esc);
+        setDispute(dsp);
       } else {
         setEscrow(null);
+        setDispute(null);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -324,7 +334,24 @@ export default function TaskDetail() {
                 </Button>
               )}
 
-              {isOwner && task.status !== "completed" && task.status !== "cancelled" && (
+              {dispute?.status === "open" && isOwner && (
+                <Button onClick={() => run(() => disputeService.resolve(task.id))} disabled={busy}>
+                  Release payment &amp; close dispute
+                </Button>
+              )}
+              {dispute?.status === "open" && isAssignedHiver && (
+                <Button onClick={() => run(() => disputeService.resolve(task.id))} disabled={busy}>
+                  Refund client &amp; close dispute
+                </Button>
+              )}
+
+              {(isOwner || isAssignedHiver) && escrow?.status === "held" && !dispute && (
+                <Button variant="ghost" onClick={() => setDisputeOpen(true)} disabled={busy}>
+                  Report a problem
+                </Button>
+              )}
+
+              {isOwner && task.status !== "completed" && task.status !== "cancelled" && task.status !== "disputed" && (
                 <Button variant="ghost" onClick={() => run(() => taskService.cancel(task.id))} disabled={busy}>
                   Cancel task
                 </Button>
@@ -364,6 +391,36 @@ export default function TaskDetail() {
                 {escrow.status === "refunded" && "Refunded to the client after cancellation."}
                 {escrow.status === "disputed" && "Locked while a dispute is being reviewed."}
               </p>
+            </Card>
+          )}
+
+          {/* Dispute — participants */}
+          {dispute && (
+            <Card>
+              <h2 className={s.sectionTitle} style={{ marginTop: 0 }}>Dispute</h2>
+              <div style={{ marginBottom: 10 }}>
+                <Badge
+                  tone={
+                    dispute.status === "open" ? "error"
+                    : dispute.status === "resolved" ? "success"
+                    : "info"
+                  }
+                >
+                  {dispute.status === "resolved"
+                    ? "resolved · paid"
+                    : dispute.status === "refunded"
+                      ? "resolved · refunded"
+                      : "open"}
+                </Badge>
+              </div>
+              <p className={s.metaLabel}>Reason</p>
+              <p className={s.offerMsg}>{dispute.reason}</p>
+              {dispute.admin_note && (
+                <>
+                  <p className={s.metaLabel} style={{ marginTop: 8 }}>Note</p>
+                  <p className={s.offerMsg}>{dispute.admin_note}</p>
+                </>
+              )}
             </Card>
           )}
 
@@ -427,6 +484,17 @@ export default function TaskDetail() {
         onSubmit={async (body) => {
           await reviewService.submit(task.id, body);
           setReviewOpen(false);
+          await load();
+        }}
+      />
+
+      {/* ── Dispute modal ────────────────────────────────────────── */}
+      <DisputeModal
+        open={disputeOpen}
+        onClose={() => setDisputeOpen(false)}
+        onSubmit={async (reason) => {
+          await disputeService.open(task.id, reason);
+          setDisputeOpen(false);
           await load();
         }}
       />
@@ -537,6 +605,59 @@ function ReviewModal({
             onChange={(e) => setComment(e.target.value)} placeholder="How did it go?" required />
         </div>
         <Button type="submit" block disabled={busy}>{busy ? "Submitting…" : "Submit review"}</Button>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Dispute form modal ────────────────────────────────────────────────────────
+function DisputeModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await onSubmit(reason);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Report a problem">
+      <form className={s.form} onSubmit={submit}>
+        {error && <p className={s.error}>{error}</p>}
+        <p className={s.hint} style={{ textAlign: "left" }}>
+          Opening a dispute locks the escrow until it&rsquo;s resolved. The other party is notified.
+        </p>
+        <div className={s.field}>
+          <label className={s.label}>What went wrong?</label>
+          <textarea
+            className={s.textarea}
+            value={reason}
+            minLength={3}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Describe the issue…"
+            required
+          />
+        </div>
+        <Button type="submit" block disabled={busy}>
+          {busy ? "Submitting…" : "Open dispute"}
+        </Button>
       </form>
     </Modal>
   );

@@ -10,6 +10,7 @@ from domain.entities.transaction import Transaction
 from domain.entities.review import Review
 from domain.entities.notification import Notification
 from domain.entities.message import Message
+from domain.entities.dispute import Dispute
 from domain.value_objects.location import Location
 
 T = TypeVar("T")
@@ -166,6 +167,19 @@ class ITransactionRepository(IRepository[Transaction, str], ABC):
 
     @abstractmethod
     async def find_by_hiver(self, hiver_id: str) -> list[Transaction]: ...
+
+
+class IDisputeRepository(ABC):
+    """One dispute per task (DB-unique on task_id)."""
+
+    @abstractmethod
+    async def add(self, dispute: Dispute) -> Dispute: ...
+
+    @abstractmethod
+    async def find_by_task(self, task_id: str) -> Dispute | None: ...
+
+    @abstractmethod
+    async def save(self, dispute: Dispute) -> Dispute: ...
 
 
 class IMessageRepository(ABC):

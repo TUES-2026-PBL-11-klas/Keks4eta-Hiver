@@ -133,3 +133,22 @@ export const messageService = {
   send: (taskId: string, content: string) =>
     api.post<ChatMessage>(`/tasks/${taskId}/messages`, { content }),
 };
+
+export interface Dispute {
+  id: string;
+  task_id: string;
+  opened_by_id: string;
+  reason: string;
+  status: "open" | "resolved" | "refunded";
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export const disputeService = {
+  get: (taskId: string) => api.get<Dispute | null>(`/tasks/${taskId}/disputes`),
+  open: (taskId: string, reason: string) =>
+    api.post<Dispute>(`/tasks/${taskId}/disputes`, { reason }),
+  resolve: (taskId: string, note?: string) =>
+    api.post<Dispute>(`/tasks/${taskId}/disputes/resolve`, { note }),
+};

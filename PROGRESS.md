@@ -344,6 +344,9 @@ earnings past it.
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
 | GET | /tasks/{id}/messages | Auth | Chat thread (client + assigned hiver) |
 | POST | /tasks/{id}/messages | Auth | Send a chat message |
+| GET | /tasks/{id}/disputes | Auth | The task's dispute, if any |
+| POST | /tasks/{id}/disputes | Auth | Open a dispute (locks escrow) |
+| POST | /tasks/{id}/disputes/resolve | Auth | Resolve by concession (release/refund) |
 | GET | /payments/tasks/{id} | Auth | Escrow status (client + assigned hiver) |
 | POST | /payments/tasks/{id}/release | Client JWT | Release escrow to hiver |
 | GET | /notifications | Auth | In-app notification feed |
@@ -361,7 +364,9 @@ earnings past it.
   assigned hiver (`GET`/`POST /tasks/{id}/messages`), access-controlled, new-message notifications,
   SPA polls every 10s (can upgrade to Supabase Realtime later)
 - Boost-listing endpoints (premium upsell — table + model exist, no flow yet)
-- Dispute resolution endpoint (table + model exist, no flow yet)
+- ~~Dispute resolution endpoint~~ ✅ **Done (Phase 7)** — open/resolve flow wired to escrow
+  (`GET`/`POST /tasks/{id}/disputes`, `POST .../disputes/resolve`); opening locks task + escrow as
+  `disputed`, resolution is by concession (client→release, hiver→refund), both parties notified
 
 ---
 
