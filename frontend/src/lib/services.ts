@@ -85,7 +85,19 @@ export const userService = {
     api.patch<HiverProfile>("/users/hivers/me/availability", { is_available_now }),
 };
 
+export interface Escrow {
+  task_id: string;
+  status: "held" | "released" | "refunded" | "disputed";
+  gross_amount: number;
+  platform_fee: number;
+  hiver_payout: number;
+  created_at: string;
+  released_at: string | null;
+  refunded_at: string | null;
+}
+
 export const paymentService = {
+  getEscrow: (taskId: string) => api.get<Escrow | null>(`/payments/tasks/${taskId}`),
   releaseEscrow: (taskId: string) =>
-    api.post<{ status: string }>(`/payments/tasks/${taskId}/release`),
+    api.post<{ status: string; hiver_payout: number }>(`/payments/tasks/${taskId}/release`),
 };

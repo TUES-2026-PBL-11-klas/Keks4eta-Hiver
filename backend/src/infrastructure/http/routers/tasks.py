@@ -7,6 +7,13 @@ from src.infrastructure.database.repositories.task_repository import PostgresTas
 from src.infrastructure.database.repositories.review_repository import (
     PostgresReviewRepository,
 )
+from src.infrastructure.database.repositories.transaction_repository import (
+    PostgresTransactionRepository,
+)
+from src.infrastructure.database.repositories.user_repository import (
+    PostgresClientRepository,
+)
+from src.infrastructure.payments.payment_factory import get_payment_port
 from src.application.use_cases.tasks.create_task_use_case import CreateTaskUseCase
 from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
 from src.application.use_cases.tasks.list_tasks_use_case import ListClientTasksUseCase
@@ -55,7 +62,10 @@ async def create_task(
     session: SessionDep,
     client: ClientDep,
 ) -> TaskDetailResponse:
-    use_case = CreateTaskUseCase(task_repo=PostgresTaskRepository(session))
+    use_case = CreateTaskUseCase(
+        task_repo=PostgresTaskRepository(session),
+        client_repo=PostgresClientRepository(session),
+    )
     return await use_case.execute(body, client_id=client.id)
 
 
@@ -105,7 +115,11 @@ async def cancel_task(
     session: SessionDep,
     client: ClientDep,
 ) -> TaskDetailResponse:
-    use_case = CancelTaskUseCase(task_repo=PostgresTaskRepository(session))
+    use_case = CancelTaskUseCase(
+        task_repo=PostgresTaskRepository(session),
+        transaction_repo=PostgresTransactionRepository(session),
+        payment_port=get_payment_port(),
+    )
     return await use_case.execute(task_id=task_id, actor_id=client.id)
 
 

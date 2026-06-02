@@ -4,6 +4,10 @@ from src.infrastructure.http.dependencies import SessionDep, ClientDep, HiverDep
 from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
 from src.infrastructure.database.repositories.offer_repository import PostgresOfferRepository
 from src.infrastructure.database.repositories.user_repository import PostgresHiverRepository
+from src.infrastructure.database.repositories.transaction_repository import (
+    PostgresTransactionRepository,
+)
+from src.infrastructure.payments.payment_factory import get_payment_port
 from src.application.use_cases.offers.create_offer_use_case import CreateOfferUseCase
 from src.application.use_cases.offers.accept_offer_use_case import AcceptOfferUseCase
 from src.application.dtos.offer_dtos import CreateOfferRequest, OfferResponse
@@ -62,5 +66,7 @@ async def accept_offer(
     use_case = AcceptOfferUseCase(
         task_repo=PostgresTaskRepository(session),
         offer_repo=PostgresOfferRepository(session),
+        transaction_repo=PostgresTransactionRepository(session),
+        payment_port=get_payment_port(),
     )
     return await use_case.execute(task_id=task_id, offer_id=offer_id, client_id=client.id)

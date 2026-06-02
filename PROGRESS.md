@@ -325,6 +325,7 @@ hiver_earnings_monthly
 | POST | /tasks/{id}/offers | Hiver JWT | Submit a bid |
 | GET | /tasks/{id}/offers | Client JWT | See all bids on my task |
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
+| GET | /payments/tasks/{id} | Auth | Escrow status (client + assigned hiver) |
 | POST | /payments/tasks/{id}/release | Client JWT | Release escrow to hiver |
 | GET | /users/{id}/reviews | None | All revealed reviews received by user |
 | GET | /users/clients/{id} | None | View client profile |
@@ -355,6 +356,15 @@ hiver_earnings_monthly
 - **Shared Claude Code tooling** — `.claude/settings.json` (team plugin allow-list) + `.claude/skills/` (11 vendored design/UX skills) so every teammate gets the same AI assistants on `git pull` + restart. Setup + third-party attribution in `.claude/README.md`. Personal overrides stay in the git-ignored `.claude/settings.local.json`.
 
 **Done:**
+- **Shared cloud database wired** — app, Alembic migrations, and the seed script are all
+  transaction-pooler-safe (`statement_cache_size=0` + NullPool), so the whole team runs against
+  one Supabase Postgres with `DATABASE_USE_POOLER=true`. Fixed two latent bugs that only surface
+  against a real DB: task creation was missing its client repository, and hiver login lazy-loaded
+  the `skills` relationship outside the async context (`MissingGreenlet`).
+- **Functional escrow, end-to-end** — `MockPaymentAdapter` (drop-in swappable for `StripeAdapter`
+  via `payment_factory.get_payment_port()`) holds the offer price on accept, captures/releases on
+  completion, and refunds on cancel; `GET /payments/tasks/{id}` exposes escrow state to the client
+  and assigned hiver. No external Stripe account required.
 - **Domain unit tests** — 97 tests, all green (`backend/tests/unit/domain/`): value objects (Money, Rating, WorkRadius, Location invariants + Haversine) and entity state machines (Task/Offer/Transaction lifecycles, Review blind-reveal, User Client/Hiver polymorphism + level-ups). Pure Python, no DB. `conftest.py` puts `src` on `sys.path`. Run with `pytest tests/unit/domain -o addopts=""` (coverage gate disabled until the suite is fuller).
 
 **Still planned:**
@@ -415,7 +425,7 @@ backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases 
 | Observer | `domain/services/event_bus.py` | `EventBus.publish()` → subscribed handlers called automatically |
 | Strategy | `domain/services/search_sort.py` | Pluggable sort algorithm per query |
 | Repository | `domain/interfaces/repositories.py` + `infrastructure/database/repositories/` | Data access abstraction — use cases never touch SQL |
-| Adapter | `infrastructure/payments/stripe_adapter.py` | Wraps Stripe SDK behind `IPaymentPort` |
+| Adapter | `infrastructure/payments/{stripe,mock}_payment_adapter.py` | Two `IPaymentPort` impls; `payment_factory.get_payment_port()` selects real Stripe vs functional mock |
 | Context Manager | `infrastructure/database/transaction.py` | `async with db_transaction(session):` for safe DB scoping |
 | Value Object | `domain/value_objects/` | Immutable, validated, self-contained logic (Money, Location, Rating, WorkRadius) |
 | Dependency Injection | `shared/container.py` + `http/dependencies.py` | Repos and use cases wired together without tight coupling |

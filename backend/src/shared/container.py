@@ -17,6 +17,7 @@ from src.infrastructure.database.repositories.offer_repository import PostgresOf
 from src.infrastructure.database.repositories.transaction_repository import (
     PostgresTransactionRepository,
 )
+from src.infrastructure.payments.payment_factory import get_payment_port
 
 from src.application.use_cases.auth.register_use_case import RegisterUseCase
 from src.application.use_cases.auth.login_use_case import LoginUseCase
@@ -43,7 +44,10 @@ def make_login_use_case(session: AsyncSession) -> LoginUseCase:
 
 
 def make_create_task_use_case(session: AsyncSession) -> CreateTaskUseCase:
-    return CreateTaskUseCase(task_repo=PostgresTaskRepository(session))
+    return CreateTaskUseCase(
+        task_repo=PostgresTaskRepository(session),
+        client_repo=PostgresClientRepository(session),
+    )
 
 
 def make_get_task_use_case(session: AsyncSession) -> GetTaskUseCase:
@@ -66,6 +70,8 @@ def make_accept_offer_use_case(session: AsyncSession) -> AcceptOfferUseCase:
     return AcceptOfferUseCase(
         task_repo=PostgresTaskRepository(session),
         offer_repo=PostgresOfferRepository(session),
+        transaction_repo=PostgresTransactionRepository(session),
+        payment_port=get_payment_port(),
     )
 
 
@@ -73,4 +79,5 @@ def make_release_escrow_use_case(session: AsyncSession) -> ReleaseEscrowUseCase:
     return ReleaseEscrowUseCase(
         task_repo=PostgresTaskRepository(session),
         transaction_repo=PostgresTransactionRepository(session),
+        payment_port=get_payment_port(),
     )

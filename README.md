@@ -149,12 +149,17 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers` | Hiver | Submit a bid |
 | GET    | `/tasks/{id}/offers` | Client | List bids on my task |
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
+| GET    | `/payments/tasks/{id}` | Auth | Escrow status for a task (client + assigned hiver) |
 | POST   | `/payments/tasks/{id}/release` | Client | Release escrow to hiver |
 | GET    | `/users/{id}/reviews` | – | All revealed reviews received by user |
 | GET    | `/users/clients/{id}` | – | Client profile |
 | GET    | `/users/hivers/{id}` | – | Hiver profile |
 | GET    | `/users/hivers/nearby` | – | PostGIS geo-search: `lat, lng, radius_km, vertical?` |
 | PATCH  | `/users/hivers/me/availability` | Hiver | Toggle availability |
+
+Escrow is now functional end-to-end via a mock payment adapter — accepting an offer holds
+funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live
+`STRIPE_SECRET_KEY`; `payment_factory.get_payment_port` picks the adapter).
 
 Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, Supabase Storage adapter, notification adapter.
 

@@ -21,7 +21,9 @@ class HiverModel(Base):
     stripe_account_id: Mapped[str|None]   = mapped_column(String(100))
 
     user:   Mapped["UserModel"]          = relationship("UserModel", back_populates="hiver")
-    skills: Mapped[list["SkillModel"]]   = relationship("SkillModel", secondary="hiver_skills", back_populates="hivers")
+    # selectin: the hiver→domain mapping always reads .skills; async SQLAlchemy
+    # can't lazy-load mid-mapping (MissingGreenlet), so eager-load it.
+    skills: Mapped[list["SkillModel"]]   = relationship("SkillModel", secondary="hiver_skills", back_populates="hivers", lazy="selectin")
     offers: Mapped[list["OfferModel"]]   = relationship("OfferModel", back_populates="hiver")
     tasks_assigned: Mapped[list["TaskModel"]] = relationship("TaskModel", back_populates="hiver", foreign_keys="TaskModel.hiver_id")
     boosts: Mapped[list["BoostModel"]]   = relationship("BoostModel", back_populates="hiver")

@@ -7,6 +7,7 @@ import {
   paymentService,
   reviewService,
   taskService,
+  type Escrow,
 } from "@/lib/services";
 import { budgetLabel } from "@/lib/format";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
@@ -32,6 +33,7 @@ export default function TaskDetail() {
   const [task, setTask] = useState<TaskDetailT | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [escrow, setEscrow] = useState<Escrow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,6 +59,12 @@ export default function TaskDetail() {
       // Offers are visible to the owning client only.
       if (user && t.client_id === user.id) {
         setOffers(await offerService.forTask(id).catch(() => []));
+      }
+      // Escrow is visible to the owning client and the assigned hiver.
+      if (user && (t.client_id === user.id || t.hiver_id === user.id)) {
+        setEscrow(await paymentService.getEscrow(id).catch(() => null));
+      } else {
+        setEscrow(null);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -232,6 +240,41 @@ export default function TaskDetail() {
               )}
             </div>
           </Card>
+
+          {/* Escrow status — client + assigned hiver */}
+          {escrow && (isOwner || isAssignedHiver) && (
+            <Card>
+              <h2 className={s.sectionTitle} style={{ marginTop: 0 }}>Escrow</h2>
+              <div style={{ marginBottom: 12 }}>
+                <Badge
+                  tone={
+                    escrow.status === "released" ? "success"
+                    : escrow.status === "refunded" ? "info"
+                    : escrow.status === "disputed" ? "error"
+                    : "honey"
+                  }
+                >
+                  {escrow.status}
+                </Badge>
+              </div>
+              <div className={s.metaGrid} style={{ gridTemplateColumns: "1fr 1fr" }}>
+                <div>
+                  <div className={s.metaLabel}>Total held</div>
+                  <div className={s.metaValue}>{escrow.gross_amount} BGN</div>
+                </div>
+                <div>
+                  <div className={s.metaLabel}>Hiver payout</div>
+                  <div className={s.metaValue}>{escrow.hiver_payout} BGN</div>
+                </div>
+              </div>
+              <p className={s.hint} style={{ textAlign: "left", marginTop: 8 }}>
+                {escrow.status === "held" && "Funds are held safely until the client confirms the task is done."}
+                {escrow.status === "released" && `Released to the hiver (after a ${escrow.platform_fee} BGN platform fee).`}
+                {escrow.status === "refunded" && "Refunded to the client after cancellation."}
+                {escrow.status === "disputed" && "Locked while a dispute is being reviewed."}
+              </p>
+            </Card>
+          )}
 
           {/* Offers — owner only */}
           {isOwner && (
