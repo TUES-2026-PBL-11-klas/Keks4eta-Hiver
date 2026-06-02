@@ -9,6 +9,7 @@ from domain.entities.offer import Offer
 from domain.entities.transaction import Transaction
 from domain.entities.review import Review
 from domain.entities.notification import Notification
+from domain.entities.message import Message
 from domain.value_objects.location import Location
 
 T = TypeVar("T")
@@ -165,6 +166,21 @@ class ITransactionRepository(IRepository[Transaction, str], ABC):
 
     @abstractmethod
     async def find_by_hiver(self, hiver_id: str) -> list[Transaction]: ...
+
+
+class IMessageRepository(ABC):
+    """Task chat messages between the client and the assigned hiver."""
+
+    @abstractmethod
+    async def add(self, message: Message) -> Message: ...
+
+    @abstractmethod
+    async def list_for_task(self, task_id: str) -> list[Message]: ...
+
+    @abstractmethod
+    async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
+        """Mark messages the reader received (sender != reader) as read."""
+        ...
 
 
 class INotificationRepository(ABC):

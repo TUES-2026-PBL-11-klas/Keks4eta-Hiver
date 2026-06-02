@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES, paths } from "@/constants/routes";
 import {
+  messageService,
   offerService,
   paymentService,
   reviewService,
   taskService,
+  type ChatMessage,
   type Escrow,
 } from "@/lib/services";
 import { budgetLabel } from "@/lib/format";
@@ -42,9 +44,16 @@ export default function TaskDetail() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const chatLogRef = useRef<HTMLDivElement>(null);
+
   const isOwner = !!user && task?.client_id === user.id;
   const isAssignedHiver = !!user && task?.hiver_id === user.id;
   const isHiver = user?.role === "hiver";
+  // Chat opens once a hiver is assigned, between the client and that hiver only.
+  const canChat = (isOwner || isAssignedHiver) && !!task?.hiver_id;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +85,45 @@ export default function TaskDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadMessages = useCallback(async () => {
+    if (!canChat || !id) return;
+    try {
+      setMessages(await messageService.list(id));
+    } catch {
+      /* ignore transient errors while polling */
+    }
+  }, [canChat, id]);
+
+  // Poll the thread every 10s while the chat is open.
+  useEffect(() => {
+    if (!canChat) return;
+    void loadMessages();
+    const t = window.setInterval(loadMessages, 10000);
+    return () => window.clearInterval(t);
+  }, [canChat, loadMessages]);
+
+  // Keep the chat scrolled to the newest message.
+  useEffect(() => {
+    const el = chatLogRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  async function sendMessage(e: FormEvent) {
+    e.preventDefault();
+    const text = chatInput.trim();
+    if (!text || !id) return;
+    setChatBusy(true);
+    try {
+      await messageService.send(id, text);
+      setChatInput("");
+      await loadMessages();
+    } catch (err) {
+      setActionError((err as Error).message);
+    } finally {
+      setChatBusy(false);
+    }
+  }
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -168,6 +216,49 @@ export default function TaskDetail() {
                   </div>
                 ))}
               </div>
+            </>
+          )}
+
+          {/* Messages — client + assigned hiver */}
+          {canChat && (
+            <>
+              <h2 className={s.sectionTitle}>Messages</h2>
+              <Card className={s.chatCard}>
+                <div className={s.chatLog} ref={chatLogRef}>
+                  {messages.length === 0 ? (
+                    <p className={s.hint} style={{ textAlign: "center", margin: "auto" }}>
+                      No messages yet. Say hello 👋
+                    </p>
+                  ) : (
+                    messages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`${s.msgRow} ${m.sender_id === user?.id ? s.msgMine : ""}`}
+                      >
+                        <span className={s.msgBubble}>{m.content}</span>
+                        <span className={s.msgTime}>
+                          {new Date(m.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form className={s.chatForm} onSubmit={sendMessage}>
+                  <input
+                    className={s.input}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message…"
+                    maxLength={1000}
+                  />
+                  <Button type="submit" size="sm" disabled={chatBusy || !chatInput.trim()}>
+                    Send
+                  </Button>
+                </form>
+              </Card>
             </>
           )}
 

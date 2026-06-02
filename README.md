@@ -150,6 +150,8 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers` | Hiver | Submit a bid |
 | GET    | `/tasks/{id}/offers` | Client | List bids on my task |
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
+| GET    | `/tasks/{id}/messages` | Auth | Chat thread (client + assigned hiver only) |
+| POST   | `/tasks/{id}/messages` | Auth | Send a chat message (notifies the other party) |
 | GET    | `/payments/tasks/{id}` | Auth | Escrow status for a task (client + assigned hiver) |
 | POST   | `/payments/tasks/{id}/release` | Client | Release escrow to hiver |
 | GET    | `/notifications` | Auth | In-app notification feed (Observer/EventBus) |

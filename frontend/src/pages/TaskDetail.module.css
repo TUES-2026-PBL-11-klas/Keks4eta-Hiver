@@ -102,3 +102,32 @@
   font-size: 0.86rem;
   font-weight: 600;
 }
+
+/* ── Chat ────────────────────────────────────────────────────────────────── */
+.chatCard { display: flex; flex-direction: column; gap: var(--sp-3); }
+.chatLog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 340px;
+  min-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.msgRow { display: flex; flex-direction: column; align-items: flex-start; max-width: 80%; }
+.msgMine { align-self: flex-end; align-items: flex-end; }
+.msgBubble {
+  padding: 9px 13px;
+  border-radius: 14px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--ink-900);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msgMine .msgBubble { background: var(--honey-100); border-color: var(--honey-200, var(--honey-100)); }
+.msgTime { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-400); margin-top: 2px; }
+.chatForm { display: flex; gap: var(--sp-2); align-items: center; }
+.chatForm .input { flex: 1; }

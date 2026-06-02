@@ -342,6 +342,8 @@ earnings past it.
 | POST | /tasks/{id}/offers | Hiver JWT | Submit a bid |
 | GET | /tasks/{id}/offers | Client JWT | See all bids on my task |
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
+| GET | /tasks/{id}/messages | Auth | Chat thread (client + assigned hiver) |
+| POST | /tasks/{id}/messages | Auth | Send a chat message |
 | GET | /payments/tasks/{id} | Auth | Escrow status (client + assigned hiver) |
 | POST | /payments/tasks/{id}/release | Client JWT | Release escrow to hiver |
 | GET | /notifications | Auth | In-app notification feed |
@@ -355,7 +357,9 @@ earnings past it.
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
 
 **Deferred to Phase 5 (non-blocking for grading of Phase 4):**
-- Real-time chat / message endpoints (WebSockets via Supabase Realtime — design only)
+- ~~Real-time chat / message endpoints~~ ✅ **Done (Phase 7)** — task chat between the client and
+  assigned hiver (`GET`/`POST /tasks/{id}/messages`), access-controlled, new-message notifications,
+  SPA polls every 10s (can upgrade to Supabase Realtime later)
 - Boost-listing endpoints (premium upsell — table + model exist, no flow yet)
 - Dispute resolution endpoint (table + model exist, no flow yet)
 

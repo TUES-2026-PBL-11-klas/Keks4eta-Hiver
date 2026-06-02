@@ -118,3 +118,18 @@ export const notificationService = {
   markRead: (id: string) => api.post<{ ok: boolean }>(`/notifications/${id}/read`),
   markAllRead: () => api.post<{ marked: number }>("/notifications/read-all"),
 };
+
+export interface ChatMessage {
+  id: string;
+  task_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const messageService = {
+  list: (taskId: string) => api.get<ChatMessage[]>(`/tasks/${taskId}/messages`),
+  send: (taskId: string, content: string) =>
+    api.post<ChatMessage>(`/tasks/${taskId}/messages`, { content }),
+};
