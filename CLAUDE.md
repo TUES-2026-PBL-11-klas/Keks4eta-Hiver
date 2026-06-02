@@ -39,12 +39,20 @@ HTTP (routers)  →  Application (use cases)  →  Domain (entities)
 
 If you catch a leak (e.g. a use case importing `PostgresXRepository`), fix it — don't merge.
 
+**Frontend** (`frontend/src/`) is a responsive React + TypeScript SPA (Vite, React Router, Framer Motion). Keep its own layering clean:
+- `lib/api.ts` — single fetch wrapper; base URL is `/api/v1` (override `VITE_API_BASE`). Don't call `fetch` directly elsewhere.
+- `lib/services.ts` — typed service functions per resource; pages call services, never `api` or `fetch` directly.
+- `context/AuthContext.tsx` — auth state, token storage, `loginWithProvider` (OAuth). Guard private routes with `components/ProtectedRoute`.
+- `components/ui/` — shared primitives (Button, Card, Badge, Avatar, Stars, …). Reuse before adding new ones.
+- Design tokens live in `index.css` (`--honey*`, `--ink*`, `--sp-*`, `--fs-*`); use them instead of hardcoded values. Build mobile-first, then layer breakpoints.
+
 ## 3. Database changes
 
-- Schema changes go through Alembic migrations. Never edit `models.py` without a matching migration in `backend/alembic/versions/`.
-- Migrations are numbered `001_*.py` through `015_*.py` (currently). Add the next sequential number.
+- Schema changes go through Alembic migrations. Never edit the SQLAlchemy models in `backend/src/infrastructure/database/models/` without a matching migration in `backend/src/infrastructure/database/migrations/versions/`.
+- Migrations are numbered `001_*.py` through `017_*.py` (currently). Add the next sequential number.
 - PostGIS `Geography` columns must use raw `op.execute()` SQL (GeoAlchemy2 doesn't work inside `op.create_table()`).
-- Seed data lives in `backend/alembic/seeds/`.
+- Migration predicates must stay `IMMUTABLE` — never use `NOW()` in a partial-index `WHERE` (Postgres rejects it; see the 013 fix). Filter on time at query time instead.
+- Seed data lives in `backend/src/infrastructure/database/seed.py`.
 
 ## 4. Testing
 

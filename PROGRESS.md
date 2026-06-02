@@ -36,6 +36,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ⏳ In progress — domain unit tests done (97, all green); CI/templates/CODEOWNERS/dependabot in place; use-case + integration tests next | — |
 | 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
+| 7 | Marketplace Completion | 🔄 In progress — functional escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: fuller test coverage & polish | — |
 
 ---
 
@@ -67,12 +68,16 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
 | **uv** | latest | Replaces pip — installs packages 10-100x faster | Package manager |
 
-#### Why PostgreSQL and NOT Supabase as the main DB?
+#### Why Supabase-hosted PostgreSQL (and not Supabase's data API)?
 
-Supabase is used only for **Storage** (task images) and **Realtime** (push notifications). The main database is self-hosted PostgreSQL because:
-- PostGIS is needed for geospatial queries (`find_hivers_in_radius` stored function)
-- We need full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations are required for the Databases subject grade — Supabase doesn't support Alembic
+The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
+- PostGIS geospatial queries (`find_hivers_in_radius` stored function)
+- Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→017 chain applies normally)
+
+What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
+
+Other Supabase / external services: **Supabase Storage** for task images (`IStoragePort`); push notifications go through **Firebase FCM** (`INotificationPort`), not Supabase Realtime.
 
 ---
 
@@ -356,7 +361,7 @@ earnings past it.
 
 ---
 
-### Phase 5 — Tests, CI/CD, Observability ⏳ Repo infra in place, tests not started
+### Phase 5 — Tests, CI/CD, Observability ⏳ Repo infra in place; domain + first use-case tests green, integration tests next
 
 **What it is:** Making the project production-ready and proving it works automatically.
 
@@ -384,7 +389,7 @@ earnings past it.
 - **Domain unit tests** — 97 tests, all green (`backend/tests/unit/domain/`): value objects (Money, Rating, WorkRadius, Location invariants + Haversine) and entity state machines (Task/Offer/Transaction lifecycles, Review blind-reveal, User Client/Hiver polymorphism + level-ups). Pure Python, no DB. `conftest.py` puts `src` on `sys.path`. Run with `pytest tests/unit/domain -o addopts=""` (coverage gate disabled until the suite is fuller).
 
 **Still planned:**
-- **Use-case tests** — application use cases with in-memory fake repositories
+- **More use-case tests** — application use cases with in-memory fake repositories (first one — `OAuthLoginUseCase`, in `tests/unit/application/` — is already green)
 - **Integration tests** — repositories against a real test database, API HTTP tests
 - **Coverage target** — 80% minimum (already enforced by `pytest-cov` in CI; suite is empty)
 - **Kubernetes deployment** — Helm chart with 2–10 replicas, rolling updates, zero downtime
@@ -426,6 +431,30 @@ endpoint to a real page, and adding Google/Facebook sign-in.
 
 **Verification:** frontend `tsc` typecheck + `eslint` (max-warnings 0) + `vite build` all pass;
 backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases green).
+
+---
+
+### Phase 7 — Marketplace Completion 🔄
+
+**What it is:** Turning the wired-up marketplace into a working end-to-end product — money
+actually moves through escrow, users get told when things happen, and the whole team shares
+one database.
+
+- **Functional escrow, end-to-end** — accepting an offer holds the price, completing a task
+  releases it to the hiver, cancelling refunds the client; `MockPaymentAdapter` is a drop-in for
+  `StripeAdapter` via `payment_factory.get_payment_port()` (no Stripe account needed to demo).
+  `GET /payments/tasks/{id}` exposes escrow state to the client and assigned hiver.
+- **In-app notifications (Observer)** — use cases publish domain events to a request-scoped
+  `EventBus`; a subscriber persists them to `notification_log`. The SPA polls
+  `GET /notifications/unread_count` and renders a `NotificationBell` with a feed and
+  read / read-all actions.
+- **Shared cloud database** — the app, Alembic, and the seed script are all transaction-pooler-safe
+  (`statement_cache_size=0` + `NullPool`), so the team runs against one Supabase Postgres with
+  `DATABASE_USE_POOLER=true`. Migration 017 locks the auto-exposed `public` schema behind
+  Row Level Security (default-deny) so nothing bypasses the FastAPI backend.
+
+**Remaining:** fuller test coverage (use-case + integration + API), and swapping the mock
+Stripe / storage / FCM adapters for live ones.
 
 ---
 

@@ -15,6 +15,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
+| 7 | Marketplace completion | 🔄 In progress — escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: full test coverage & polish | — |
 
 ## Tech Stack (short)
 
@@ -45,10 +46,10 @@ hiver/
 │   ├── src/
 │   │   ├── domain/            entities, value objects, errors, interfaces
 │   │   ├── application/       use cases + DTOs
-│   │   ├── infrastructure/    database, http, payments, storage adapters
+│   │   ├── infrastructure/    database (models, migrations 001–017, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
-│   ├── alembic/               migrations 001–017 + seeds
+│   ├── tests/                 unit (domain) + use-case tests
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/          Vite + React + TypeScript
