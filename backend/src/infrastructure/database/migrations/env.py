@@ -38,10 +38,16 @@ def do_run_migrations(connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    # When DATABASE_URL points at a transaction-mode pooler (Supabase/pgbouncer),
+    # asyncpg must not cache prepared statements — same constraint the app engine
+    # handles in src/infrastructure/database/session.py. Without this, migrations
+    # fail with "prepared statement does not exist" / statement_cache errors.
+    connect_args = {"statement_cache_size": 0} if settings.database_use_pooler else {}
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
