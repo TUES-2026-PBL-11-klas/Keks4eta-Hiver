@@ -59,28 +59,15 @@ class TaskBuilder(ABC if False else object):
 
 
 class HomeTaskBuilder(TaskBuilder):
-    """Validates home-specific smart_answers: property_type, size_sqm."""
-
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "property_type" not in answers:
-            raise ValueError("Home tasks require 'property_type' in smart_answers")
+    """Home tasks — accepts optional smart_answers: property_type, size_sqm."""
 
 
 class LearnTaskBuilder(TaskBuilder):
-    """Validates learn-specific smart_answers: subject, student_age."""
-
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "subject" not in answers:
-            raise ValueError("Learn tasks require 'subject' in smart_answers")
+    """Learn tasks — accepts optional smart_answers: subject, student_age."""
 
 
 class TechTaskBuilder(TaskBuilder):
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "device_type" not in answers:
-            raise ValueError("Tech tasks require 'device_type' in smart_answers")
+    """Tech tasks — accepts optional smart_answers: device_type."""
 
 
 class GenericTaskBuilder(TaskBuilder):

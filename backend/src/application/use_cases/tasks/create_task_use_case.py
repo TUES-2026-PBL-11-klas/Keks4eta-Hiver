@@ -1,5 +1,5 @@
 from src.domain.services.task_factory import TaskFactory, TaskCreateData
-from src.domain.errors.domain_errors import ClientNotFoundError
+from src.domain.errors.domain_errors import ClientNotFoundError, AppError
 from src.domain.interfaces.repositories import ITaskRepository, IClientRepository
 from src.application.dtos.task_dtos import CreateTaskRequest, TaskDetailResponse
 
@@ -40,7 +40,10 @@ class CreateTaskUseCase:
             location_display=request.location_display,
             image_urls=request.image_urls,
         )
-        task = TaskFactory.create(data)
+        try:
+            task = TaskFactory.create(data)
+        except ValueError as e:
+            raise AppError(str(e), "INVALID_TASK_DATA", status_code=422) from e
         await self._task_repo.save(task)
         client.record_task_posted()
         await self._client_repo.save(client)
