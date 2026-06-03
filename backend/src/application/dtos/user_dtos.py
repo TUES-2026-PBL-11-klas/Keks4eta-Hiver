@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class ClientProfileResponse(BaseModel):
@@ -28,6 +27,7 @@ class HiverProfileResponse(BaseModel):
     is_available_now: bool
     work_radius_km: int
     skills: list[str] = []
+    is_boosted: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -38,6 +38,7 @@ class MeResponse(BaseModel):
     Role-specific fields are populated only for the matching role and are
     otherwise None, so the SPA can render one model regardless of role.
     """
+
     id: str
     email: str
     full_name: str
@@ -74,5 +75,6 @@ class HiverSearchResult(BaseModel):
     is_available_now: bool
     work_radius_km: int
     distance_km: float | None = None
+    is_boosted: bool = False
 
     model_config = {"from_attributes": True}

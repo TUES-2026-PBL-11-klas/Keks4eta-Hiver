@@ -1,16 +1,18 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TypeVar, Generic
+from typing import Generic, TypeVar
 
-from domain.entities.user import Client, Hiver
-from domain.entities.task import Task
-from domain.entities.offer import Offer
-from domain.entities.transaction import Transaction
-from domain.entities.review import Review
-from domain.entities.notification import Notification
-from domain.entities.message import Message
+from domain.entities.boost import Boost
 from domain.entities.dispute import Dispute
+from domain.entities.message import Message
+from domain.entities.notification import Notification
+from domain.entities.offer import Offer
+from domain.entities.review import Review
+from domain.entities.task import Task
+from domain.entities.transaction import Transaction
+from domain.entities.user import Client, Hiver
 from domain.value_objects.location import Location
 
 T = TypeVar("T")
@@ -18,6 +20,7 @@ ID = TypeVar("ID", str, int)
 
 
 # ── Generic Base ────────────────────────────────────────────────────────────
+
 
 class IRepository(ABC, Generic[T, ID]):
     """
@@ -39,6 +42,7 @@ class IRepository(ABC, Generic[T, ID]):
 @dataclass
 class PaginatedResult(Generic[T]):
     """Generic paginated response — works for any entity type."""
+
     items: list[T]
     total: int
     page: int
@@ -74,6 +78,7 @@ Result = Success[T] | Failure  # type alias
 
 
 # ── Interface Segregation (SOLID — I) ───────────────────────────────────────
+
 
 class IReadableTaskRepository(ABC):
     """Read-only subset — used by public search, does not depend on writes."""
@@ -123,6 +128,7 @@ class ITaskRepository(IReadableTaskRepository, IWritableTaskRepository):
 
 # ── Concrete Repository Interfaces ──────────────────────────────────────────
 
+
 class IClientRepository(IRepository[Client, str], ABC):
     @abstractmethod
     async def find_by_email(self, email: str) -> Client | None: ...
@@ -131,7 +137,9 @@ class IClientRepository(IRepository[Client, str], ABC):
     async def find_by_oauth(self, provider: str, oauth_id: str) -> Client | None: ...
 
     @abstractmethod
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Client]: ...
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Client]: ...
 
 
 class IHiverRepository(IRepository[Hiver, str], ABC):
@@ -147,7 +155,9 @@ class IHiverRepository(IRepository[Hiver, str], ABC):
     ) -> list[Hiver]: ...
 
     @abstractmethod
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Hiver]: ...
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Hiver]: ...
 
 
 class IOfferRepository(IRepository[Offer, str], ABC):
@@ -158,7 +168,9 @@ class IOfferRepository(IRepository[Offer, str], ABC):
     async def find_by_hiver(self, hiver_id: str) -> list[Offer]: ...
 
     @abstractmethod
-    async def find_by_task_and_hiver(self, task_id: str, hiver_id: str) -> Offer | None: ...
+    async def find_by_task_and_hiver(
+        self, task_id: str, hiver_id: str
+    ) -> Offer | None: ...
 
 
 class ITransactionRepository(IRepository[Transaction, str], ABC):
@@ -167,6 +179,21 @@ class ITransactionRepository(IRepository[Transaction, str], ABC):
 
     @abstractmethod
     async def find_by_hiver(self, hiver_id: str) -> list[Transaction]: ...
+
+
+class IBoostRepository(ABC):
+    """Paid hiver visibility boosts."""
+
+    @abstractmethod
+    async def add(self, boost: Boost) -> Boost: ...
+
+    @abstractmethod
+    async def find_active_for_hiver(self, hiver_id: str) -> Boost | None: ...
+
+    @abstractmethod
+    async def active_hiver_ids(self, vertical: str | None = None) -> set[str]:
+        """Ids of hivers with a currently-active boost applicable to `vertical`."""
+        ...
 
 
 class IDisputeRepository(ABC):

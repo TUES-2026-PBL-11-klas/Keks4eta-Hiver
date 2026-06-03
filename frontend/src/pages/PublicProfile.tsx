@@ -62,6 +62,7 @@ export default function PublicProfile({ kind }: { kind: "hiver" | "client" }) {
           <div className={s.statRow}>
             <Stars value={rating} />
             <Badge tone="honey">{isHiver ? hiver!.level : "client"}</Badge>
+            {hiver?.is_boosted && <Badge tone="honey">★ Boosted</Badge>}
           </div>
           {hiver?.bio && <p className={s.bio}>{hiver.bio}</p>}
         </div>

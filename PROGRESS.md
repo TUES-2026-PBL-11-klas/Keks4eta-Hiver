@@ -358,12 +358,16 @@ earnings past it.
 | GET | /users/hivers/{id} | None | View hiver profile |
 | GET | /users/hivers/nearby | None | PostGIS geo-search — `lat, lng, radius_km, vertical?` |
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
+| POST | /users/hivers/me/boost | Hiver JWT | Buy a visibility boost (mock-charged) |
+| GET | /users/hivers/me/boost | Hiver JWT | My active boost, if any |
 
 **Deferred to Phase 5 (non-blocking for grading of Phase 4):**
 - ~~Real-time chat / message endpoints~~ ✅ **Done (Phase 7)** — task chat between the client and
   assigned hiver (`GET`/`POST /tasks/{id}/messages`), access-controlled, new-message notifications,
   SPA polls every 10s (can upgrade to Supabase Realtime later)
-- Boost-listing endpoints (premium upsell — table + model exist, no flow yet)
+- ~~Boost-listing endpoints~~ ✅ **Done (Phase 7)** — paid hiver visibility boosts
+  (`POST`/`GET /users/hivers/me/boost`, mock-charged via the payment port); active-boost hivers
+  rank first in the PostGIS nearby search and show a "Boosted" badge across the SPA
 - ~~Dispute resolution endpoint~~ ✅ **Done (Phase 7)** — open/resolve flow wired to escrow
   (`GET`/`POST /tasks/{id}/disputes`, `POST .../disputes/resolve`); opening locks task + escrow as
   `disputed`, resolution is by concession (client→release, hiver→refund), both parties notified

@@ -164,8 +164,10 @@ npm run dev                     # http://localhost:5173
 | GET    | `/users/{id}/reviews` | – | All revealed reviews received by user |
 | GET    | `/users/clients/{id}` | – | Client profile |
 | GET    | `/users/hivers/{id}` | – | Hiver profile |
-| GET    | `/users/hivers/nearby` | – | PostGIS geo-search: `lat, lng, radius_km, vertical?` |
+| GET    | `/users/hivers/nearby` | – | PostGIS geo-search: `lat, lng, radius_km, vertical?` (boosted hivers rank first) |
 | PATCH  | `/users/hivers/me/availability` | Hiver | Toggle availability |
+| POST   | `/users/hivers/me/boost` | Hiver | Buy a visibility boost (mock-charged, 7 days) |
+| GET    | `/users/hivers/me/boost` | Hiver | My active boost, if any |
 
 Escrow is now functional end-to-end via a mock payment adapter — accepting an offer holds
 funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live

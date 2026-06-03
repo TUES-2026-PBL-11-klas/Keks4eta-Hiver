@@ -85,6 +85,22 @@ export const userService = {
     api.patch<HiverProfile>("/users/hivers/me/availability", { is_available_now }),
 };
 
+export interface Boost {
+  id: string;
+  hiver_id: string;
+  vertical: string | null;
+  expires_at: string;
+  created_at: string;
+  is_active: boolean;
+  price_bgn: number;
+}
+
+export const boostService = {
+  mine: () => api.get<Boost | null>("/users/hivers/me/boost"),
+  buy: (vertical?: Vertical) =>
+    api.post<Boost>("/users/hivers/me/boost", { vertical: vertical ?? null }),
+};
+
 export interface Escrow {
   task_id: string;
   status: "held" | "released" | "refunded" | "disputed";

@@ -104,6 +104,7 @@ export default function NearbyHivers() {
                     <div className={s.statRow}>
                       <Stars value={h.avg_rating} size={14} />
                       <Badge tone="muted">{h.level}</Badge>
+                      {h.is_boosted && <Badge tone="honey">★ Boosted</Badge>}
                     </div>
                     <div className={s.statRow}>
                       {h.is_available_now && <span className={s.dot} />}
