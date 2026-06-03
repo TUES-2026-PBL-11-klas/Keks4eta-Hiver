@@ -1,5 +1,5 @@
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
 
 
 class Settings(BaseSettings):
@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Comma-separated CORS origins from .env, parsed into a list."""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

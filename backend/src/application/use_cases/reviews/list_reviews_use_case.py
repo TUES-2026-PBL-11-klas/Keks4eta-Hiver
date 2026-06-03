@@ -1,5 +1,5 @@
-from src.domain.interfaces.repositories import IReviewRepository
 from src.application.dtos.review_dtos import ReviewResponse
+from src.domain.interfaces.repositories import IReviewRepository
 
 
 class ListTaskReviewsUseCase:

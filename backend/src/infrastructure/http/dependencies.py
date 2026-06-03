@@ -1,24 +1,25 @@
-from typing import AsyncGenerator, Annotated
+from collections.abc import AsyncGenerator
+from typing import Annotated
+
 from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.infrastructure.database.session import AsyncSessionLocal
-from src.shared.security import decode_token
+from src.domain.entities.user import Client, Hiver
 from src.domain.errors.domain_errors import InvalidTokenError, UnauthorizedActionError
 from src.domain.interfaces.ports import NotificationPayload
-from src.domain.services.event_bus import EventBus, DomainEvent, NOTIFY_EVENT
+from src.domain.services.event_bus import NOTIFY_EVENT, DomainEvent, EventBus
 from src.infrastructure.database.repositories.user_repository import (
     PostgresClientRepository,
     PostgresHiverRepository,
 )
+from src.infrastructure.database.session import AsyncSessionLocal
 from src.infrastructure.notifications.in_app_adapter import InAppNotificationAdapter
-from src.domain.entities.user import Client, Hiver
+from src.shared.security import decode_token
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            yield session
+    async with AsyncSessionLocal() as session, session.begin():
+        yield session
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]

@@ -1,14 +1,20 @@
 from __future__ import annotations
+
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.user import Client, Hiver
+from src.domain.interfaces.repositories import (
+    IClientRepository,
+    IHiverRepository,
+    PaginatedResult,
+)
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
-from src.domain.interfaces.repositories import IClientRepository, IHiverRepository, PaginatedResult
-from src.infrastructure.database.models import UserModel, ClientModel, HiverModel
+from src.infrastructure.database.models import ClientModel, HiverModel, UserModel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

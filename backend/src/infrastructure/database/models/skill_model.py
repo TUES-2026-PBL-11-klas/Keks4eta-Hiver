@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import uuid
-from sqlalchemy import String, ForeignKey, Table, Column
+
+from sqlalchemy import Column, ForeignKey, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
 
 hiver_skills = Table(
@@ -19,4 +22,4 @@ class SkillModel(Base):
     name:     Mapped[str]      = mapped_column(String(80), unique=True, nullable=False)
     vertical: Mapped[str|None] = mapped_column(String(20))
 
-    hivers: Mapped[list["HiverModel"]] = relationship("HiverModel", secondary="hiver_skills", back_populates="skills")
+    hivers: Mapped[list[HiverModel]] = relationship("HiverModel", secondary="hiver_skills", back_populates="skills")

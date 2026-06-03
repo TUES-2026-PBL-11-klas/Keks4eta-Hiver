@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import uuid
 
 from domain.interfaces.ports import IPaymentPort

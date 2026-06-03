@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DECIMAL, DateTime, ForeignKey, func
+
+from sqlalchemy import DECIMAL, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
 
 
@@ -23,4 +26,4 @@ class TransactionModel(Base):
     created_at:               Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:               Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    task: Mapped["TaskModel"] = relationship("TaskModel", back_populates="transaction")
+    task: Mapped[TaskModel] = relationship("TaskModel", back_populates="transaction")

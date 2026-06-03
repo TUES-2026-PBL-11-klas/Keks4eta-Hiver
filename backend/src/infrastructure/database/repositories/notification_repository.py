@@ -1,5 +1,6 @@
 from __future__ import annotations
-from sqlalchemy import select, update, func
+
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.notification import Notification

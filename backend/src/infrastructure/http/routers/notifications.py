@@ -1,19 +1,19 @@
 from fastapi import APIRouter, Query
 
-from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep
-from src.infrastructure.database.repositories.notification_repository import (
-    PostgresNotificationRepository,
-)
-from src.application.use_cases.notifications.notification_use_cases import (
-    ListNotificationsUseCase,
-    CountUnreadUseCase,
-    MarkNotificationReadUseCase,
-    MarkAllNotificationsReadUseCase,
-)
 from src.application.dtos.notification_dtos import (
     NotificationResponse,
     UnreadCountResponse,
 )
+from src.application.use_cases.notifications.notification_use_cases import (
+    CountUnreadUseCase,
+    ListNotificationsUseCase,
+    MarkAllNotificationsReadUseCase,
+    MarkNotificationReadUseCase,
+)
+from src.infrastructure.database.repositories.notification_repository import (
+    PostgresNotificationRepository,
+)
+from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 

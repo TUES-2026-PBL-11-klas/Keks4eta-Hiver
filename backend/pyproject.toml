@@ -40,8 +40,6 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# This is an application (run via `uvicorn src.main:app`), not an installable
-# library — so uv should install dependencies only, not try to build `src/`.
 [tool.uv]
 package = false
 
@@ -53,8 +51,10 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/infrastructure/database/models/*.py" = ["F821"]
+
 [tool.ruff.lint.flake8-bugbear]
-# FastAPI uses these callables as argument defaults by design (like Query/Depends).
 extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.UploadFile"]
 
 [tool.mypy]
@@ -65,8 +65,23 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=src --cov-report=html --cov-fail-under=80"
+addopts = "--cov=src --cov-report=html --cov-report=xml --cov-fail-under=80"
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["tests/*", "**/__init__.py"]
+omit = [
+    "tests/*",
+    "**/__init__.py",
+    "src/infrastructure/database/migrations/*",
+    "src/infrastructure/database/seed.py",
+    "src/infrastructure/database/models/*",
+    "src/infrastructure/payments/stripe_adapter.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Text, DateTime, ForeignKey, func
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
 
 
@@ -16,5 +19,5 @@ class MessageModel(Base):
     is_read:    Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    task:   Mapped["TaskModel"] = relationship("TaskModel", back_populates="messages")
-    sender: Mapped["UserModel"] = relationship("UserModel", back_populates="messages_sent")
+    task:   Mapped[TaskModel] = relationship("TaskModel", back_populates="messages")
+    sender: Mapped[UserModel] = relationship("UserModel", back_populates="messages_sent")

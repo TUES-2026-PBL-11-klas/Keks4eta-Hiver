@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from domain.interfaces.ports import IStoragePort
-
 from src.infrastructure.storage.supabase_storage_adapter import SupabaseStorageAdapter
 from src.shared.config import settings
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from domain.interfaces.ports import IPaymentPort
 from domain.value_objects.money import Money
 

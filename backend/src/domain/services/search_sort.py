@@ -1,8 +1,7 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-from domain.value_objects.rating import Rating
 
 
 @dataclass

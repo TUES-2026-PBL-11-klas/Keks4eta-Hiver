@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from domain.errors.domain_errors import InsufficientRatingError, InvalidEmailError
+from domain.value_objects.location import Location
 from domain.value_objects.money import Money
 from domain.value_objects.rating import Rating
-from domain.value_objects.location import Location
 from domain.value_objects.work_radius import WorkRadius
-from domain.errors.domain_errors import InvalidEmailError, InsufficientRatingError
 
 
 @dataclass

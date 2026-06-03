@@ -1,11 +1,11 @@
 import uuid
 
+from src.application.dtos.message_dtos import MessageResponse
 from src.domain.entities.message import Message
 from src.domain.entities.task import Task
 from src.domain.errors.domain_errors import TaskNotFoundError, UnauthorizedActionError
-from src.domain.interfaces.repositories import ITaskRepository, IMessageRepository
+from src.domain.interfaces.repositories import IMessageRepository, ITaskRepository
 from src.domain.services.event_bus import EventBus, notify
-from src.application.dtos.message_dtos import MessageResponse
 
 
 def _assert_participant(task: Task, user_id: str) -> str:

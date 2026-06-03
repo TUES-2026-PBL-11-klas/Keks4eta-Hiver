@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from domain.entities.boost import Boost
 from domain.entities.dispute import Dispute
@@ -22,7 +22,7 @@ ID = TypeVar("ID", str, int)
 # ── Generic Base ────────────────────────────────────────────────────────────
 
 
-class IRepository(ABC, Generic[T, ID]):
+class IRepository[T, ID: (str, int)](ABC):
     """
     Generic repository interface.
     OOP: Generics — one interface works for User, Task, Offer, etc.
@@ -40,7 +40,7 @@ class IRepository(ABC, Generic[T, ID]):
 
 
 @dataclass
-class PaginatedResult(Generic[T]):
+class PaginatedResult[T]:
     """Generic paginated response — works for any entity type."""
 
     items: list[T]
@@ -63,13 +63,13 @@ E = TypeVar("E", bound="Exception")
 
 
 @dataclass(frozen=True)
-class Success(Generic[T]):
+class Success[T]:
     data: T
     success: bool = True
 
 
 @dataclass(frozen=True)
-class Failure(Generic[E]):  # type: ignore[type-var]
+class Failure[E: "Exception"]:  # type: ignore[type-var]
     error: E
     success: bool = False
 

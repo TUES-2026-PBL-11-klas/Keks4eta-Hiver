@@ -1,6 +1,7 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Callable, Awaitable
+
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -42,7 +43,7 @@ NOTIFY_EVENT = "notify"
 
 
 async def notify(
-    bus: "EventBus | None",
+    bus: EventBus | None,
     recipient_id: str,
     title: str,
     body: str,

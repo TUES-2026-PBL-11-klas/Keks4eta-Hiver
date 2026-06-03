@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DECIMAL, ARRAY, Text, DateTime, ForeignKey, func
+
+from geoalchemy2 import Geography
+from sqlalchemy import ARRAY, DECIMAL, Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from geoalchemy2 import Geography
+
 from .base import Base
 
 
@@ -30,10 +33,10 @@ class TaskModel(Base):
     created_at:       Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:       Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    client:      Mapped["ClientModel"]         = relationship("ClientModel", back_populates="tasks", foreign_keys=[client_id])
-    hiver:       Mapped["HiverModel|None"]     = relationship("HiverModel", back_populates="tasks_assigned", foreign_keys=[hiver_id])
-    offers:      Mapped[list["OfferModel"]]    = relationship("OfferModel", back_populates="task")
-    transaction: Mapped["TransactionModel|None"] = relationship("TransactionModel", back_populates="task", uselist=False)
-    reviews:     Mapped[list["ReviewModel"]]   = relationship("ReviewModel", back_populates="task")
-    messages:    Mapped[list["MessageModel"]]  = relationship("MessageModel", back_populates="task")
-    dispute:     Mapped["DisputeModel|None"]   = relationship("DisputeModel", back_populates="task", uselist=False)
+    client:      Mapped[ClientModel]         = relationship("ClientModel", back_populates="tasks", foreign_keys=[client_id])
+    hiver:       Mapped[HiverModel|None]     = relationship("HiverModel", back_populates="tasks_assigned", foreign_keys=[hiver_id])
+    offers:      Mapped[list[OfferModel]]    = relationship("OfferModel", back_populates="task")
+    transaction: Mapped[TransactionModel|None] = relationship("TransactionModel", back_populates="task", uselist=False)
+    reviews:     Mapped[list[ReviewModel]]   = relationship("ReviewModel", back_populates="task")
+    messages:    Mapped[list[MessageModel]]  = relationship("MessageModel", back_populates="task")
+    dispute:     Mapped[DisputeModel|None]   = relationship("DisputeModel", back_populates="task", uselist=False)

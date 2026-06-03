@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
+
+from jose import JWTError, jwt
+
+from src.domain.errors.domain_errors import InvalidTokenError, TokenExpiredError
 from src.shared.config import settings
-from src.domain.errors.domain_errors import TokenExpiredError, InvalidTokenError
 
 
 def create_access_token(user_id: str, role: str) -> str:
@@ -27,5 +29,5 @@ def decode_token(token: str) -> dict:
         return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
     except JWTError as e:
         if "expired" in str(e).lower():
-            raise TokenExpiredError()
-        raise InvalidTokenError()
+            raise TokenExpiredError() from e
+        raise InvalidTokenError() from e

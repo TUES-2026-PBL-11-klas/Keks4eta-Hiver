@@ -1,18 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
-from domain.value_objects.money import Money
-from domain.value_objects.location import Location
 from domain.errors.domain_errors import (
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
     UnauthorizedActionError,
 )
+from domain.value_objects.location import Location
+from domain.value_objects.money import Money
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     OPEN = "open"
     ACCEPTED = "accepted"
     IN_PROGRESS = "in_progress"

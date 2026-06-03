@@ -1,12 +1,12 @@
 from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
-from domain.entities.task import Task, VALID_VERTICALS
-from domain.value_objects.money import Money
-from domain.value_objects.location import Location
+from domain.entities.task import VALID_VERTICALS, Task
 from domain.errors.domain_errors import InvalidVerticalError
+from domain.value_objects.location import Location
+from domain.value_objects.money import Money
 
 
 @dataclass
@@ -27,7 +27,7 @@ class TaskCreateData:
     image_urls: list[str] | None = None
 
 
-class TaskBuilder(ABC if False else object):
+class TaskBuilder:
     """Abstract base for vertical-specific task builders."""
 
     def __init__(self, data: TaskCreateData) -> None:

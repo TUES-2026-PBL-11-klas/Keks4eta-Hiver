@@ -1,5 +1,6 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
 from src.shared.config import settings
 
 # A shared, hosted Postgres (e.g. Supabase) is usually reached through a

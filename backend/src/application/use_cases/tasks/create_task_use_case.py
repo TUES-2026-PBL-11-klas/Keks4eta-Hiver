@@ -1,7 +1,7 @@
-from src.domain.services.task_factory import TaskFactory, TaskCreateData
-from src.domain.errors.domain_errors import ClientNotFoundError, AppError
-from src.domain.interfaces.repositories import ITaskRepository, IClientRepository
 from src.application.dtos.task_dtos import CreateTaskRequest, TaskDetailResponse
+from src.domain.errors.domain_errors import AppError, ClientNotFoundError
+from src.domain.interfaces.repositories import IClientRepository, ITaskRepository
+from src.domain.services.task_factory import TaskCreateData, TaskFactory
 
 
 class CreateTaskUseCase:

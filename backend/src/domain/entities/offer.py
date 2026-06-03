@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
-from domain.value_objects.money import Money
 from domain.errors.domain_errors import UnauthorizedActionError
+from domain.value_objects.money import Money
 
 
-class OfferStatus(str, Enum):
+class OfferStatus(StrEnum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     REJECTED = "rejected"

@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DECIMAL, Text, DateTime, ForeignKey, func
+
+from sqlalchemy import DECIMAL, Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
 
 
@@ -18,6 +21,6 @@ class ReviewModel(Base):
     is_revealed: Mapped[bool]  = mapped_column(Boolean, default=False)
     created_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    task:     Mapped["TaskModel"] = relationship("TaskModel", back_populates="reviews")
-    reviewer: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[reviewer_id], back_populates="reviews_given")
-    reviewee: Mapped["UserModel"] = relationship("UserModel", foreign_keys=[reviewee_id], back_populates="reviews_received")
+    task:     Mapped[TaskModel] = relationship("TaskModel", back_populates="reviews")
+    reviewer: Mapped[UserModel] = relationship("UserModel", foreign_keys=[reviewer_id], back_populates="reviews_given")
+    reviewee: Mapped[UserModel] = relationship("UserModel", foreign_keys=[reviewee_id], back_populates="reviews_received")

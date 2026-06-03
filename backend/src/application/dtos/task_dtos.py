@@ -1,8 +1,9 @@
 from __future__ import annotations
-from pydantic import BaseModel, field_validator
-from typing import Literal
-from datetime import datetime
 
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, field_validator
 
 VALID_VERTICALS = {"home", "learn", "tech", "care", "move", "events"}
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from src.application.dtos.auth_dtos import TokenResponse
 from src.domain.errors.domain_errors import InvalidTokenError
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository
-from src.application.dtos.auth_dtos import TokenResponse
 from src.shared.security import (
     create_access_token,
     create_refresh_token,

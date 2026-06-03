@@ -1,13 +1,15 @@
 from __future__ import annotations
+
 import uuid
+
 from passlib.context import CryptContext
 
+from src.application.dtos.auth_dtos import RegisterRequest, TokenResponse
 from src.domain.entities.user import Client, Hiver
-from src.domain.value_objects.rating import Rating
-from src.domain.value_objects.work_radius import WorkRadius
 from src.domain.errors.domain_errors import DuplicateEmailError
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository
-from src.application.dtos.auth_dtos import RegisterRequest, TokenResponse
+from src.domain.value_objects.rating import Rating
+from src.domain.value_objects.work_radius import WorkRadius
 from src.shared.security import create_access_token, create_refresh_token
 
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")

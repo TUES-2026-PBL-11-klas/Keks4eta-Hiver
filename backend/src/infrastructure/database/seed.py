@@ -10,17 +10,20 @@ Creates:
 """
 import asyncio
 import uuid
-from passlib.context import CryptContext
+
+from pwdlib import PasswordHash
 from sqlalchemy import func, select
 
-from src.infrastructure.database.session import engine, AsyncSessionLocal
 from src.infrastructure.database.models import (
-    UserModel, ClientModel, HiverModel, SkillModel,
+    ClientModel,
+    HiverModel,
+    SkillModel,
     TaskModel,
+    UserModel,
 )
+from src.infrastructure.database.session import AsyncSessionLocal, engine
 
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+pwd = PasswordHash.recommended()
 
 async def seed() -> None:
     # Reuse the app engine so we inherit its pooler-safe config (NullPool +
@@ -33,7 +36,7 @@ async def seed() -> None:
         await engine.dispose()
         return
 
-    async with AsyncSessionLocal() as session:
+    async with AsyncSessionLocal() as session:  # noqa: SIM117
         async with session.begin():
             # ── Skills ──────────────────────────────────────────────────
             skills_data = [
