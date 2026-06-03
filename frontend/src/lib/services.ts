@@ -54,6 +54,11 @@ export const taskService = {
   start: (id: string) => api.post<TaskDetail>(`/tasks/${id}/start`),
   complete: (id: string) => api.post<TaskDetail>(`/tasks/${id}/complete`),
   cancel: (id: string) => api.post<TaskDetail>(`/tasks/${id}/cancel`),
+  uploadImage: (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
+  },
 };
 
 export const offerService = {

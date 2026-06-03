@@ -26,6 +26,7 @@ dependencies = [
     "structlog>=24.0.0",
     "prometheus-fastapi-instrumentator>=7.0.0",
     "slowapi>=0.1.9",
+    "python-multipart>=0.0.30",
 ]
 
 [project.optional-dependencies]
@@ -54,6 +55,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI uses these callables as argument defaults by design (like Query/Depends).
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.UploadFile"]
 
 [tool.mypy]
 python_version = "3.12"

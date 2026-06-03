@@ -62,7 +62,8 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
 | **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
 | **Stripe** | ≥9.0 | Payment intents with manual capture for escrow hold/release | Payments |
-| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Google Maps, Supabase) | External API calls |
+| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST, Google Maps) | External API calls |
+| **python-multipart** | ≥0.0.30 | Parses `multipart/form-data` so FastAPI can accept file uploads | Task image uploads |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
 | **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
@@ -337,6 +338,7 @@ earnings past it.
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
 | POST | /tasks/{id}/complete | Client JWT | Mark task done |
 | POST | /tasks/{id}/cancel | Client JWT | Cancel non-completed task |
+| POST | /tasks/{id}/images | Client JWT | Upload a task photo (Supabase Storage) |
 | POST | /tasks/{id}/reviews | Auth | Submit review (blind-reveal via DB trigger) |
 | GET | /tasks/{id}/reviews | None | List task reviews (`only_revealed=true` by default) |
 | POST | /tasks/{id}/offers | Hiver JWT | Submit a bid |

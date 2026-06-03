@@ -145,6 +145,7 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
 | POST   | `/tasks/{id}/complete` | Client | Client marks task done |
 | POST   | `/tasks/{id}/cancel` | Client | Cancel a non-completed task |
+| POST   | `/tasks/{id}/images` | Client | Upload a task photo to Supabase Storage |
 | POST   | `/tasks/{id}/reviews` | Auth | Submit review (blind-reveal via DB trigger) |
 | GET    | `/tasks/{id}/reviews` | – | List reviews on a task (revealed by default) |
 | POST   | `/tasks/{id}/offers` | Hiver | Submit a bid |
@@ -176,7 +177,10 @@ funds, completing releases them, cancelling refunds (swap to real Stripe by sett
 In-app notifications are live: use cases publish to a request-scoped `EventBus` (Observer) whose
 subscriber persists to `notification_log`; the SPA polls the unread count and shows a bell.
 
-Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, Supabase Storage adapter, real push (FCM) adapter.
+Task image uploads are live on **real Supabase Storage** (`POST /tasks/{id}/images` → public
+`task-images` bucket; owners add photos from the task page).
+
+Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, real push (FCM) adapter.
 
 ## Graded Subjects
 

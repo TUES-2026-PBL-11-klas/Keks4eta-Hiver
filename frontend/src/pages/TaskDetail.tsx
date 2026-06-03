@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES, paths } from "@/constants/routes";
@@ -52,6 +52,7 @@ export default function TaskDetail() {
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const chatLogRef = useRef<HTMLDivElement>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
 
   const isOwner = !!user && task?.client_id === user.id;
   const isAssignedHiver = !!user && task?.hiver_id === user.id;
@@ -132,6 +133,22 @@ export default function TaskDetail() {
       setActionError((err as Error).message);
     } finally {
       setChatBusy(false);
+    }
+  }
+
+  async function onPickImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setUploadingImg(true);
+    setActionError("");
+    try {
+      await taskService.uploadImage(id, file);
+      await load();
+    } catch (err) {
+      setActionError((err as Error).message);
+    } finally {
+      setUploadingImg(false);
     }
   }
 
@@ -226,6 +243,40 @@ export default function TaskDetail() {
                   </div>
                 ))}
               </div>
+            </>
+          )}
+
+          {/* Photos */}
+          {(task.image_urls.length > 0 || isOwner) && (
+            <>
+              <div className={s.photoHead}>
+                <h2 className={s.sectionTitle} style={{ margin: 0 }}>Photos</h2>
+                {isOwner && (
+                  <label className={s.addPhoto}>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      hidden
+                      disabled={uploadingImg}
+                      onChange={onPickImage}
+                    />
+                    {uploadingImg ? "Uploading…" : "+ Add photo"}
+                  </label>
+                )}
+              </div>
+              {task.image_urls.length > 0 ? (
+                <div className={s.gallery}>
+                  {task.image_urls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className={s.thumb}>
+                      <img src={url} alt="Task" loading="lazy" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className={s.hint} style={{ textAlign: "left" }}>
+                  Add photos to help hivers understand the job.
+                </p>
+              )}
             </>
           )}
 
