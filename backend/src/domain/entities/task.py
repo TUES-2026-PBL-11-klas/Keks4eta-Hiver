@@ -90,7 +90,15 @@ class Task:
         self._touch()
 
     def open_dispute(self) -> None:
+        """Either party flags a problem — locks the task while escrow is reviewed."""
         self.status = TaskStatus.DISPUTED
+        self._touch()
+
+    def resolve_dispute(self, *, release: bool) -> None:
+        """Resolve a dispute: release → COMPLETED (hiver paid), refund → CANCELLED."""
+        if self.status != TaskStatus.DISPUTED:
+            raise TaskNotCompletedError(self.id)
+        self.status = TaskStatus.COMPLETED if release else TaskStatus.CANCELLED
         self._touch()
 
     def is_open(self) -> bool:

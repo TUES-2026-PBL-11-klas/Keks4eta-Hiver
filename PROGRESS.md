@@ -36,6 +36,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ⏳ In progress — domain unit tests done (97, all green); CI/templates/CODEOWNERS/dependabot in place; use-case + integration tests next | — |
 | 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
+| 7 | Marketplace Completion | 🔄 In progress — functional escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: fuller test coverage & polish | — |
 
 ---
 
@@ -61,18 +62,23 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
 | **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
 | **Stripe** | ≥9.0 | Payment intents with manual capture for escrow hold/release | Payments |
-| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Google Maps, Supabase) | External API calls |
+| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST, Google Maps) | External API calls |
+| **python-multipart** | ≥0.0.30 | Parses `multipart/form-data` so FastAPI can accept file uploads | Task image uploads |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
 | **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
 | **uv** | latest | Replaces pip — installs packages 10-100x faster | Package manager |
 
-#### Why PostgreSQL and NOT Supabase as the main DB?
+#### Why Supabase-hosted PostgreSQL (and not Supabase's data API)?
 
-Supabase is used only for **Storage** (task images) and **Realtime** (push notifications). The main database is self-hosted PostgreSQL because:
-- PostGIS is needed for geospatial queries (`find_hivers_in_radius` stored function)
-- We need full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations are required for the Databases subject grade — Supabase doesn't support Alembic
+The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
+- PostGIS geospatial queries (`find_hivers_in_radius` stored function)
+- Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→017 chain applies normally)
+
+What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
+
+Other Supabase / external services: **Supabase Storage** for task images (`IStoragePort`); push notifications go through **Firebase FCM** (`INotificationPort`), not Supabase Realtime.
 
 ---
 
@@ -196,12 +202,12 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 16 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 17 Alembic migrations that build the full schema from scratch in order.
 
 **SQLAlchemy Models (13 tables):**
 `users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
 
-**The 16 Migrations:**
+**The 17 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -220,6 +226,7 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 | 014 | create_plpgsql_functions | 3 triggers + 1 stored function (see below) |
 | 015 | create_views | `hiver_earnings_monthly` view with window functions |
 | 016 | add_oauth_to_users | `password_hash` made nullable; `oauth_provider` + `oauth_id` columns; partial unique index on (provider, id) for social login |
+| 017 | enable_rls_and_secure_view | Enables Row Level Security (default-deny) on all 14 public tables; recreates `hiver_earnings_monthly` with `security_invoker = on` |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -243,6 +250,17 @@ hiver_earnings_monthly
 -- 3-month rolling average (trend)
 -- Only released transactions
 ```
+
+**Row Level Security (migration 017):** The database is hosted on Supabase, which
+auto-exposes the entire `public` schema through its PostgREST data API (anon key).
+This app never uses that API — the frontend goes through the FastAPI backend over a
+direct Postgres connection — so the auto-API is an unused open door that Supabase's
+security linter flagged (15 ERRORs). Migration 017 enables RLS on all 14 public tables
+with no policies attached, which is *default-deny*: the anon/authenticated API roles get
+nothing, while the backend (connecting as the table owner, which has `BYPASSRLS`) is
+unaffected. The `hiver_earnings_monthly` view is also recreated `WITH (security_invoker
+= on)` so it runs with the caller's privileges and respects that RLS instead of leaking
+earnings past it.
 
 **Why raw SQL for PostGIS columns:** GeoAlchemy2's `Geography` type cannot be used inside Alembic's `op.create_table()` DDL helper — it only works with `op.execute()` raw SQL strings.
 
@@ -320,26 +338,45 @@ hiver_earnings_monthly
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
 | POST | /tasks/{id}/complete | Client JWT | Mark task done |
 | POST | /tasks/{id}/cancel | Client JWT | Cancel non-completed task |
+| POST | /tasks/{id}/images | Client JWT | Upload a task photo (Supabase Storage) |
 | POST | /tasks/{id}/reviews | Auth | Submit review (blind-reveal via DB trigger) |
 | GET | /tasks/{id}/reviews | None | List task reviews (`only_revealed=true` by default) |
 | POST | /tasks/{id}/offers | Hiver JWT | Submit a bid |
 | GET | /tasks/{id}/offers | Client JWT | See all bids on my task |
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
+| GET | /tasks/{id}/messages | Auth | Chat thread (client + assigned hiver) |
+| POST | /tasks/{id}/messages | Auth | Send a chat message |
+| GET | /tasks/{id}/disputes | Auth | The task's dispute, if any |
+| POST | /tasks/{id}/disputes | Auth | Open a dispute (locks escrow) |
+| POST | /tasks/{id}/disputes/resolve | Auth | Resolve by concession (release/refund) |
+| GET | /payments/tasks/{id} | Auth | Escrow status (client + assigned hiver) |
 | POST | /payments/tasks/{id}/release | Client JWT | Release escrow to hiver |
+| GET | /notifications | Auth | In-app notification feed |
+| GET | /notifications/unread_count | Auth | Unread count (SPA polls) |
+| POST | /notifications/{id}/read | Auth | Mark one notification read |
+| POST | /notifications/read-all | Auth | Mark all read |
 | GET | /users/{id}/reviews | None | All revealed reviews received by user |
 | GET | /users/clients/{id} | None | View client profile |
 | GET | /users/hivers/{id} | None | View hiver profile |
 | GET | /users/hivers/nearby | None | PostGIS geo-search — `lat, lng, radius_km, vertical?` |
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
+| POST | /users/hivers/me/boost | Hiver JWT | Buy a visibility boost (mock-charged) |
+| GET | /users/hivers/me/boost | Hiver JWT | My active boost, if any |
 
 **Deferred to Phase 5 (non-blocking for grading of Phase 4):**
-- Real-time chat / message endpoints (WebSockets via Supabase Realtime — design only)
-- Boost-listing endpoints (premium upsell — table + model exist, no flow yet)
-- Dispute resolution endpoint (table + model exist, no flow yet)
+- ~~Real-time chat / message endpoints~~ ✅ **Done (Phase 7)** — task chat between the client and
+  assigned hiver (`GET`/`POST /tasks/{id}/messages`), access-controlled, new-message notifications,
+  SPA polls every 10s (can upgrade to Supabase Realtime later)
+- ~~Boost-listing endpoints~~ ✅ **Done (Phase 7)** — paid hiver visibility boosts
+  (`POST`/`GET /users/hivers/me/boost`, mock-charged via the payment port); active-boost hivers
+  rank first in the PostGIS nearby search and show a "Boosted" badge across the SPA
+- ~~Dispute resolution endpoint~~ ✅ **Done (Phase 7)** — open/resolve flow wired to escrow
+  (`GET`/`POST /tasks/{id}/disputes`, `POST .../disputes/resolve`); opening locks task + escrow as
+  `disputed`, resolution is by concession (client→release, hiver→refund), both parties notified
 
 ---
 
-### Phase 5 — Tests, CI/CD, Observability ⏳ Repo infra in place, tests not started
+### Phase 5 — Tests, CI/CD, Observability ⏳ Repo infra in place; domain + first use-case tests green, integration tests next
 
 **What it is:** Making the project production-ready and proving it works automatically.
 
@@ -355,10 +392,19 @@ hiver_earnings_monthly
 - **Shared Claude Code tooling** — `.claude/settings.json` (team plugin allow-list) + `.claude/skills/` (11 vendored design/UX skills) so every teammate gets the same AI assistants on `git pull` + restart. Setup + third-party attribution in `.claude/README.md`. Personal overrides stay in the git-ignored `.claude/settings.local.json`.
 
 **Done:**
+- **Shared cloud database wired** — app, Alembic migrations, and the seed script are all
+  transaction-pooler-safe (`statement_cache_size=0` + NullPool), so the whole team runs against
+  one Supabase Postgres with `DATABASE_USE_POOLER=true`. Fixed two latent bugs that only surface
+  against a real DB: task creation was missing its client repository, and hiver login lazy-loaded
+  the `skills` relationship outside the async context (`MissingGreenlet`).
+- **Functional escrow, end-to-end** — `MockPaymentAdapter` (drop-in swappable for `StripeAdapter`
+  via `payment_factory.get_payment_port()`) holds the offer price on accept, captures/releases on
+  completion, and refunds on cancel; `GET /payments/tasks/{id}` exposes escrow state to the client
+  and assigned hiver. No external Stripe account required.
 - **Domain unit tests** — 97 tests, all green (`backend/tests/unit/domain/`): value objects (Money, Rating, WorkRadius, Location invariants + Haversine) and entity state machines (Task/Offer/Transaction lifecycles, Review blind-reveal, User Client/Hiver polymorphism + level-ups). Pure Python, no DB. `conftest.py` puts `src` on `sys.path`. Run with `pytest tests/unit/domain -o addopts=""` (coverage gate disabled until the suite is fuller).
 
 **Still planned:**
-- **Use-case tests** — application use cases with in-memory fake repositories
+- **More use-case tests** — application use cases with in-memory fake repositories (first one — `OAuthLoginUseCase`, in `tests/unit/application/` — is already green)
 - **Integration tests** — repositories against a real test database, API HTTP tests
 - **Coverage target** — 80% minimum (already enforced by `pytest-cov` in CI; suite is empty)
 - **Kubernetes deployment** — Helm chart with 2–10 replicas, rolling updates, zero downtime
@@ -403,6 +449,30 @@ backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases 
 
 ---
 
+### Phase 7 — Marketplace Completion 🔄
+
+**What it is:** Turning the wired-up marketplace into a working end-to-end product — money
+actually moves through escrow, users get told when things happen, and the whole team shares
+one database.
+
+- **Functional escrow, end-to-end** — accepting an offer holds the price, completing a task
+  releases it to the hiver, cancelling refunds the client; `MockPaymentAdapter` is a drop-in for
+  `StripeAdapter` via `payment_factory.get_payment_port()` (no Stripe account needed to demo).
+  `GET /payments/tasks/{id}` exposes escrow state to the client and assigned hiver.
+- **In-app notifications (Observer)** — use cases publish domain events to a request-scoped
+  `EventBus`; a subscriber persists them to `notification_log`. The SPA polls
+  `GET /notifications/unread_count` and renders a `NotificationBell` with a feed and
+  read / read-all actions.
+- **Shared cloud database** — the app, Alembic, and the seed script are all transaction-pooler-safe
+  (`statement_cache_size=0` + `NullPool`), so the team runs against one Supabase Postgres with
+  `DATABASE_USE_POOLER=true`. Migration 017 locks the auto-exposed `public` schema behind
+  Row Level Security (default-deny) so nothing bypasses the FastAPI backend.
+
+**Remaining:** fuller test coverage (use-case + integration + API), and swapping the mock
+Stripe / storage / FCM adapters for live ones.
+
+---
+
 ## Design Patterns Reference
 
 | Pattern | Where | Purpose |
@@ -412,10 +482,10 @@ backend `OAuthLoginUseCase` unit test added (`tests/unit/application/`, 4 cases 
 | State Machine | `task.py`, `offer.py`, `transaction.py` | Status transitions validated by methods, not raw assignment |
 | Factory Method | `transaction.py` | `Transaction.create_for_task()` computes fees in one call |
 | Factory + Builder | `domain/services/task_factory.py` | `TaskFactory` dispatches to `HomeTaskBuilder`, `LearnTaskBuilder`, etc. |
-| Observer | `domain/services/event_bus.py` | `EventBus.publish()` → subscribed handlers called automatically |
+| Observer | `domain/services/event_bus.py` + `http/dependencies.py` | Use cases `publish()`; a request-scoped subscriber persists in-app notifications to `notification_log` (offer received/accepted, task started, payment released, task cancelled) |
 | Strategy | `domain/services/search_sort.py` | Pluggable sort algorithm per query |
 | Repository | `domain/interfaces/repositories.py` + `infrastructure/database/repositories/` | Data access abstraction — use cases never touch SQL |
-| Adapter | `infrastructure/payments/stripe_adapter.py` | Wraps Stripe SDK behind `IPaymentPort` |
+| Adapter | `infrastructure/payments/{stripe,mock}_payment_adapter.py` | Two `IPaymentPort` impls; `payment_factory.get_payment_port()` selects real Stripe vs functional mock |
 | Context Manager | `infrastructure/database/transaction.py` | `async with db_transaction(session):` for safe DB scoping |
 | Value Object | `domain/value_objects/` | Immutable, validated, self-contained logic (Money, Location, Rating, WorkRadius) |
 | Dependency Injection | `shared/container.py` + `http/dependencies.py` | Repos and use cases wired together without tight coupling |
@@ -453,7 +523,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–016 Alembic migrations
+│           │   ├── migrations/versions/  001–017 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

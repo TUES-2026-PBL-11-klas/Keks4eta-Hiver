@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
-import { userService } from "@/lib/services";
+import { boostService, userService, type Boost } from "@/lib/services";
 import { Avatar, Badge, Button, Card, Stars } from "@/components/ui";
 import { GridIcon, SearchIcon, LogOutIcon, ShieldIcon } from "@/components/icons";
 import s from "./Profile.module.css";
@@ -12,6 +12,13 @@ export default function Profile() {
   const { user, logout, refresh } = useAuth();
   const [available, setAvailable] = useState(!!user?.is_available_now);
   const [saving, setSaving] = useState(false);
+  const [boost, setBoost] = useState<Boost | null>(null);
+  const [boostBusy, setBoostBusy] = useState(false);
+
+  useEffect(() => {
+    if (user?.role !== "hiver") return;
+    boostService.mine().then(setBoost).catch(() => setBoost(null));
+  }, [user?.role]);
 
   if (!user) return null; // guarded by ProtectedRoute
 
@@ -33,6 +40,15 @@ export default function Profile() {
       setAvailable(!next);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function buyBoost() {
+    setBoostBusy(true);
+    try {
+      setBoost(await boostService.buy());
+    } finally {
+      setBoostBusy(false);
     }
   }
 
@@ -105,6 +121,27 @@ export default function Profile() {
                 <input type="checkbox" checked={available} onChange={toggleAvailability} disabled={saving} />
                 <span className={s.slider} />
               </label>
+            </div>
+          </Card>
+
+          <h2 className="section-title" style={{ margin: "var(--sp-8) 0 var(--sp-4)" }}>Visibility boost</h2>
+          <Card>
+            <div className={s.availRow}>
+              <div className={s.availText}>
+                <strong>{boost?.is_active ? "Boosted — you rank first in search" : "Stand out to clients"}</strong>
+                <span>
+                  {boost?.is_active
+                    ? `Active until ${new Date(boost.expires_at).toLocaleDateString()}.`
+                    : "Rank above other hivers in nearby searches for 7 days."}
+                </span>
+              </div>
+              {boost?.is_active ? (
+                <Badge tone="honey">★ Active</Badge>
+              ) : (
+                <Button size="sm" onClick={buyBoost} disabled={boostBusy}>
+                  {boostBusy ? "…" : "Boost · 5 BGN"}
+                </Button>
+              )}
             </div>
           </Card>
         </>

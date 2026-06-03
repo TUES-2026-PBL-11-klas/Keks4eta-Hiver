@@ -11,23 +11,29 @@ Creates:
 import asyncio
 import uuid
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func, select
 
-from src.shared.config import settings
+from src.infrastructure.database.session import engine, AsyncSessionLocal
 from src.infrastructure.database.models import (
     UserModel, ClientModel, HiverModel, SkillModel,
-    TaskModel, Base,
+    TaskModel,
 )
 
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 async def seed() -> None:
-    engine = create_async_engine(settings.database_url, echo=False)
-    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    # Reuse the app engine so we inherit its pooler-safe config (NullPool +
+    # statement_cache_size=0) when DATABASE_URL points at Supabase's pooler.
+    async with engine.connect() as conn:
+        existing = await conn.scalar(select(func.count()).select_from(UserModel))
+    if existing:
+        print(f"Seed skipped — {existing} users already present. "
+              "Reset the DB if you want a clean reseed.")
+        await engine.dispose()
+        return
 
-    async with Session() as session:
+    async with AsyncSessionLocal() as session:
         async with session.begin():
             # ── Skills ──────────────────────────────────────────────────
             skills_data = [

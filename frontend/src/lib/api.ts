@@ -99,6 +99,36 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+// Multipart upload — must NOT set Content-Type (browser adds the boundary).
+async function upload<T>(
+  path: string,
+  formData: FormData,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { _retried } = options;
+  const headers: Record<string, string> = {};
+  const access = tokens.access;
+  if (access) headers["Authorization"] = `Bearer ${access}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, { method: "POST", body: formData, headers });
+
+  if (res.status === 401 && !_retried && tokens.refresh) {
+    if (await tryRefresh()) return upload<T>(path, formData, { ...options, _retried: true });
+    tokens.clear();
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiRequestError(
+      body?.message ?? body?.detail ?? res.statusText,
+      res.status,
+      body?.code,
+    );
+  }
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
@@ -106,6 +136,7 @@ export const api = {
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData) => upload<T>(path, formData),
 };
 
 /** Absolute URL for browser navigations (OAuth redirects bypass fetch/proxy). */

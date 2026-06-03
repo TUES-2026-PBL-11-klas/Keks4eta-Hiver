@@ -15,6 +15,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
+| 7 | Marketplace completion | 🔄 In progress — escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: full test coverage & polish | — |
 
 ## Tech Stack (short)
 
@@ -23,7 +24,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (16 chained) |
+| Migrations | Alembic (17 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
 | Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
@@ -45,10 +46,10 @@ hiver/
 │   ├── src/
 │   │   ├── domain/            entities, value objects, errors, interfaces
 │   │   ├── application/       use cases + DTOs
-│   │   ├── infrastructure/    database, http, payments, storage adapters
+│   │   ├── infrastructure/    database (models, migrations 001–017, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
-│   ├── alembic/               migrations 001–016 + seeds
+│   ├── tests/                 unit (domain) + use-case tests
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/          Vite + React + TypeScript
@@ -144,19 +145,42 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
 | POST   | `/tasks/{id}/complete` | Client | Client marks task done |
 | POST   | `/tasks/{id}/cancel` | Client | Cancel a non-completed task |
+| POST   | `/tasks/{id}/images` | Client | Upload a task photo to Supabase Storage |
 | POST   | `/tasks/{id}/reviews` | Auth | Submit review (blind-reveal via DB trigger) |
 | GET    | `/tasks/{id}/reviews` | – | List reviews on a task (revealed by default) |
 | POST   | `/tasks/{id}/offers` | Hiver | Submit a bid |
 | GET    | `/tasks/{id}/offers` | Client | List bids on my task |
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
+| GET    | `/tasks/{id}/messages` | Auth | Chat thread (client + assigned hiver only) |
+| POST   | `/tasks/{id}/messages` | Auth | Send a chat message (notifies the other party) |
+| GET    | `/tasks/{id}/disputes` | Auth | The task's dispute, if any (participants only) |
+| POST   | `/tasks/{id}/disputes` | Auth | Open a dispute — locks escrow as `disputed` |
+| POST   | `/tasks/{id}/disputes/resolve` | Auth | Resolve by concession (client→release, hiver→refund) |
+| GET    | `/payments/tasks/{id}` | Auth | Escrow status for a task (client + assigned hiver) |
 | POST   | `/payments/tasks/{id}/release` | Client | Release escrow to hiver |
+| GET    | `/notifications` | Auth | In-app notification feed (Observer/EventBus) |
+| GET    | `/notifications/unread_count` | Auth | Unread badge count (SPA polls this) |
+| POST   | `/notifications/{id}/read` | Auth | Mark one notification read |
+| POST   | `/notifications/read-all` | Auth | Mark all notifications read |
 | GET    | `/users/{id}/reviews` | – | All revealed reviews received by user |
 | GET    | `/users/clients/{id}` | – | Client profile |
 | GET    | `/users/hivers/{id}` | – | Hiver profile |
-| GET    | `/users/hivers/nearby` | – | PostGIS geo-search: `lat, lng, radius_km, vertical?` |
+| GET    | `/users/hivers/nearby` | – | PostGIS geo-search: `lat, lng, radius_km, vertical?` (boosted hivers rank first) |
 | PATCH  | `/users/hivers/me/availability` | Hiver | Toggle availability |
+| POST   | `/users/hivers/me/boost` | Hiver | Buy a visibility boost (mock-charged, 7 days) |
+| GET    | `/users/hivers/me/boost` | Hiver | My active boost, if any |
 
-Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, Supabase Storage adapter, notification adapter.
+Escrow is now functional end-to-end via a mock payment adapter — accepting an offer holds
+funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live
+`STRIPE_SECRET_KEY`; `payment_factory.get_payment_port` picks the adapter).
+
+In-app notifications are live: use cases publish to a request-scoped `EventBus` (Observer) whose
+subscriber persists to `notification_log`; the SPA polls the unread count and shows a bell.
+
+Task image uploads are live on **real Supabase Storage** (`POST /tasks/{id}/images` → public
+`task-images` bucket; owners add photos from the task page).
+
+Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, real push (FCM) adapter.
 
 ## Graded Subjects
 
@@ -164,5 +188,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 15 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view |
+| **БД** (Databases) | 17 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |

@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES, paths } from "@/constants/routes";
 import {
+  disputeService,
+  messageService,
   offerService,
   paymentService,
   reviewService,
   taskService,
+  type ChatMessage,
+  type Dispute,
+  type Escrow,
 } from "@/lib/services";
 import { budgetLabel } from "@/lib/format";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
@@ -32,6 +37,9 @@ export default function TaskDetail() {
   const [task, setTask] = useState<TaskDetailT | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [escrow, setEscrow] = useState<Escrow | null>(null);
+  const [dispute, setDispute] = useState<Dispute | null>(null);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -40,9 +48,17 @@ export default function TaskDetail() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const chatLogRef = useRef<HTMLDivElement>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
+
   const isOwner = !!user && task?.client_id === user.id;
   const isAssignedHiver = !!user && task?.hiver_id === user.id;
   const isHiver = user?.role === "hiver";
+  // Chat opens once a hiver is assigned, between the client and that hiver only.
+  const canChat = (isOwner || isAssignedHiver) && !!task?.hiver_id;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +74,18 @@ export default function TaskDetail() {
       if (user && t.client_id === user.id) {
         setOffers(await offerService.forTask(id).catch(() => []));
       }
+      // Escrow + dispute are visible to the owning client and the assigned hiver.
+      if (user && (t.client_id === user.id || t.hiver_id === user.id)) {
+        const [esc, dsp] = await Promise.all([
+          paymentService.getEscrow(id).catch(() => null),
+          disputeService.get(id).catch(() => null),
+        ]);
+        setEscrow(esc);
+        setDispute(dsp);
+      } else {
+        setEscrow(null);
+        setDispute(null);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -68,6 +96,61 @@ export default function TaskDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadMessages = useCallback(async () => {
+    if (!canChat || !id) return;
+    try {
+      setMessages(await messageService.list(id));
+    } catch {
+      /* ignore transient errors while polling */
+    }
+  }, [canChat, id]);
+
+  // Poll the thread every 10s while the chat is open.
+  useEffect(() => {
+    if (!canChat) return;
+    void loadMessages();
+    const t = window.setInterval(loadMessages, 10000);
+    return () => window.clearInterval(t);
+  }, [canChat, loadMessages]);
+
+  // Keep the chat scrolled to the newest message.
+  useEffect(() => {
+    const el = chatLogRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  async function sendMessage(e: FormEvent) {
+    e.preventDefault();
+    const text = chatInput.trim();
+    if (!text || !id) return;
+    setChatBusy(true);
+    try {
+      await messageService.send(id, text);
+      setChatInput("");
+      await loadMessages();
+    } catch (err) {
+      setActionError((err as Error).message);
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
+  async function onPickImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setUploadingImg(true);
+    setActionError("");
+    try {
+      await taskService.uploadImage(id, file);
+      await load();
+    } catch (err) {
+      setActionError((err as Error).message);
+    } finally {
+      setUploadingImg(false);
+    }
+  }
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -163,6 +246,83 @@ export default function TaskDetail() {
             </>
           )}
 
+          {/* Photos */}
+          {(task.image_urls.length > 0 || isOwner) && (
+            <>
+              <div className={s.photoHead}>
+                <h2 className={s.sectionTitle} style={{ margin: 0 }}>Photos</h2>
+                {isOwner && (
+                  <label className={s.addPhoto}>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      hidden
+                      disabled={uploadingImg}
+                      onChange={onPickImage}
+                    />
+                    {uploadingImg ? "Uploading…" : "+ Add photo"}
+                  </label>
+                )}
+              </div>
+              {task.image_urls.length > 0 ? (
+                <div className={s.gallery}>
+                  {task.image_urls.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className={s.thumb}>
+                      <img src={url} alt="Task" loading="lazy" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className={s.hint} style={{ textAlign: "left" }}>
+                  Add photos to help hivers understand the job.
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Messages — client + assigned hiver */}
+          {canChat && (
+            <>
+              <h2 className={s.sectionTitle}>Messages</h2>
+              <Card className={s.chatCard}>
+                <div className={s.chatLog} ref={chatLogRef}>
+                  {messages.length === 0 ? (
+                    <p className={s.hint} style={{ textAlign: "center", margin: "auto" }}>
+                      No messages yet. Say hello 👋
+                    </p>
+                  ) : (
+                    messages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`${s.msgRow} ${m.sender_id === user?.id ? s.msgMine : ""}`}
+                      >
+                        <span className={s.msgBubble}>{m.content}</span>
+                        <span className={s.msgTime}>
+                          {new Date(m.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form className={s.chatForm} onSubmit={sendMessage}>
+                  <input
+                    className={s.input}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message…"
+                    maxLength={1000}
+                  />
+                  <Button type="submit" size="sm" disabled={chatBusy || !chatInput.trim()}>
+                    Send
+                  </Button>
+                </form>
+              </Card>
+            </>
+          )}
+
           {/* Reviews */}
           {reviews.length > 0 && (
             <>
@@ -225,13 +385,95 @@ export default function TaskDetail() {
                 </Button>
               )}
 
-              {isOwner && task.status !== "completed" && task.status !== "cancelled" && (
+              {dispute?.status === "open" && isOwner && (
+                <Button onClick={() => run(() => disputeService.resolve(task.id))} disabled={busy}>
+                  Release payment &amp; close dispute
+                </Button>
+              )}
+              {dispute?.status === "open" && isAssignedHiver && (
+                <Button onClick={() => run(() => disputeService.resolve(task.id))} disabled={busy}>
+                  Refund client &amp; close dispute
+                </Button>
+              )}
+
+              {(isOwner || isAssignedHiver) && escrow?.status === "held" && !dispute && (
+                <Button variant="ghost" onClick={() => setDisputeOpen(true)} disabled={busy}>
+                  Report a problem
+                </Button>
+              )}
+
+              {isOwner && task.status !== "completed" && task.status !== "cancelled" && task.status !== "disputed" && (
                 <Button variant="ghost" onClick={() => run(() => taskService.cancel(task.id))} disabled={busy}>
                   Cancel task
                 </Button>
               )}
             </div>
           </Card>
+
+          {/* Escrow status — client + assigned hiver */}
+          {escrow && (isOwner || isAssignedHiver) && (
+            <Card>
+              <h2 className={s.sectionTitle} style={{ marginTop: 0 }}>Escrow</h2>
+              <div style={{ marginBottom: 12 }}>
+                <Badge
+                  tone={
+                    escrow.status === "released" ? "success"
+                    : escrow.status === "refunded" ? "info"
+                    : escrow.status === "disputed" ? "error"
+                    : "honey"
+                  }
+                >
+                  {escrow.status}
+                </Badge>
+              </div>
+              <div className={s.metaGrid} style={{ gridTemplateColumns: "1fr 1fr" }}>
+                <div>
+                  <div className={s.metaLabel}>Total held</div>
+                  <div className={s.metaValue}>{escrow.gross_amount} BGN</div>
+                </div>
+                <div>
+                  <div className={s.metaLabel}>Hiver payout</div>
+                  <div className={s.metaValue}>{escrow.hiver_payout} BGN</div>
+                </div>
+              </div>
+              <p className={s.hint} style={{ textAlign: "left", marginTop: 8 }}>
+                {escrow.status === "held" && "Funds are held safely until the client confirms the task is done."}
+                {escrow.status === "released" && `Released to the hiver (after a ${escrow.platform_fee} BGN platform fee).`}
+                {escrow.status === "refunded" && "Refunded to the client after cancellation."}
+                {escrow.status === "disputed" && "Locked while a dispute is being reviewed."}
+              </p>
+            </Card>
+          )}
+
+          {/* Dispute — participants */}
+          {dispute && (
+            <Card>
+              <h2 className={s.sectionTitle} style={{ marginTop: 0 }}>Dispute</h2>
+              <div style={{ marginBottom: 10 }}>
+                <Badge
+                  tone={
+                    dispute.status === "open" ? "error"
+                    : dispute.status === "resolved" ? "success"
+                    : "info"
+                  }
+                >
+                  {dispute.status === "resolved"
+                    ? "resolved · paid"
+                    : dispute.status === "refunded"
+                      ? "resolved · refunded"
+                      : "open"}
+                </Badge>
+              </div>
+              <p className={s.metaLabel}>Reason</p>
+              <p className={s.offerMsg}>{dispute.reason}</p>
+              {dispute.admin_note && (
+                <>
+                  <p className={s.metaLabel} style={{ marginTop: 8 }}>Note</p>
+                  <p className={s.offerMsg}>{dispute.admin_note}</p>
+                </>
+              )}
+            </Card>
+          )}
 
           {/* Offers — owner only */}
           {isOwner && (
@@ -293,6 +535,17 @@ export default function TaskDetail() {
         onSubmit={async (body) => {
           await reviewService.submit(task.id, body);
           setReviewOpen(false);
+          await load();
+        }}
+      />
+
+      {/* ── Dispute modal ────────────────────────────────────────── */}
+      <DisputeModal
+        open={disputeOpen}
+        onClose={() => setDisputeOpen(false)}
+        onSubmit={async (reason) => {
+          await disputeService.open(task.id, reason);
+          setDisputeOpen(false);
           await load();
         }}
       />
@@ -403,6 +656,59 @@ function ReviewModal({
             onChange={(e) => setComment(e.target.value)} placeholder="How did it go?" required />
         </div>
         <Button type="submit" block disabled={busy}>{busy ? "Submitting…" : "Submit review"}</Button>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Dispute form modal ────────────────────────────────────────────────────────
+function DisputeModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await onSubmit(reason);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Report a problem">
+      <form className={s.form} onSubmit={submit}>
+        {error && <p className={s.error}>{error}</p>}
+        <p className={s.hint} style={{ textAlign: "left" }}>
+          Opening a dispute locks the escrow until it&rsquo;s resolved. The other party is notified.
+        </p>
+        <div className={s.field}>
+          <label className={s.label}>What went wrong?</label>
+          <textarea
+            className={s.textarea}
+            value={reason}
+            minLength={3}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Describe the issue…"
+            required
+          />
+        </div>
+        <Button type="submit" block disabled={busy}>
+          {busy ? "Submitting…" : "Open dispute"}
+        </Button>
       </form>
     </Modal>
   );

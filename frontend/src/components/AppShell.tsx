@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, Button } from "@/components/ui";
+import NotificationBell from "@/components/NotificationBell";
 import {
   HomeIcon,
   SearchIcon,
@@ -119,9 +120,12 @@ export default function AppShell({ children }: Props) {
 
           <div className={s.topActions}>
             {isAuthenticated ? (
-              <Link to={ROUTES.PROFILE} className={cx(s.iconBtn, s.avatarBtn)} aria-label="Profile">
-                <Avatar name={user?.full_name ?? "U"} src={user?.avatar_url} size={42} />
-              </Link>
+              <>
+                <NotificationBell />
+                <Link to={ROUTES.PROFILE} className={cx(s.iconBtn, s.avatarBtn)} aria-label="Profile">
+                  <Avatar name={user?.full_name ?? "U"} src={user?.avatar_url} size={42} />
+                </Link>
+              </>
             ) : (
               <>
                 <Link to={ROUTES.LOGIN} className={s.iconBtn} aria-label="Sign in">

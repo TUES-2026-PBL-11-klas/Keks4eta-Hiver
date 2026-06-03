@@ -129,6 +129,7 @@ export interface HiverSearchResult {
   is_available_now: boolean;
   work_radius_km: number;
   distance_km?: number | null;
+  is_boosted?: boolean;
 }
 
 export interface HiverProfile {
@@ -145,6 +146,7 @@ export interface HiverProfile {
   is_available_now: boolean;
   work_radius_km: number;
   skills: string[];
+  is_boosted?: boolean;
 }
 
 export interface ClientProfile {

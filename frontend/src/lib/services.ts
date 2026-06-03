@@ -54,6 +54,11 @@ export const taskService = {
   start: (id: string) => api.post<TaskDetail>(`/tasks/${id}/start`),
   complete: (id: string) => api.post<TaskDetail>(`/tasks/${id}/complete`),
   cancel: (id: string) => api.post<TaskDetail>(`/tasks/${id}/cancel`),
+  uploadImage: (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
+  },
 };
 
 export const offerService = {
@@ -85,7 +90,86 @@ export const userService = {
     api.patch<HiverProfile>("/users/hivers/me/availability", { is_available_now }),
 };
 
+export interface Boost {
+  id: string;
+  hiver_id: string;
+  vertical: string | null;
+  expires_at: string;
+  created_at: string;
+  is_active: boolean;
+  price_bgn: number;
+}
+
+export const boostService = {
+  mine: () => api.get<Boost | null>("/users/hivers/me/boost"),
+  buy: (vertical?: Vertical) =>
+    api.post<Boost>("/users/hivers/me/boost", { vertical: vertical ?? null }),
+};
+
+export interface Escrow {
+  task_id: string;
+  status: "held" | "released" | "refunded" | "disputed";
+  gross_amount: number;
+  platform_fee: number;
+  hiver_payout: number;
+  created_at: string;
+  released_at: string | null;
+  refunded_at: string | null;
+}
+
 export const paymentService = {
+  getEscrow: (taskId: string) => api.get<Escrow | null>(`/payments/tasks/${taskId}`),
   releaseEscrow: (taskId: string) =>
-    api.post<{ status: string }>(`/payments/tasks/${taskId}/release`),
+    api.post<{ status: string; hiver_payout: number }>(`/payments/tasks/${taskId}/release`),
+};
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  sent_at: string;
+}
+
+export const notificationService = {
+  list: (onlyUnread = false) =>
+    api.get<AppNotification[]>(`/notifications${qs({ only_unread: onlyUnread })}`),
+  unreadCount: () => api.get<{ unread: number }>("/notifications/unread_count"),
+  markRead: (id: string) => api.post<{ ok: boolean }>(`/notifications/${id}/read`),
+  markAllRead: () => api.post<{ marked: number }>("/notifications/read-all"),
+};
+
+export interface ChatMessage {
+  id: string;
+  task_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const messageService = {
+  list: (taskId: string) => api.get<ChatMessage[]>(`/tasks/${taskId}/messages`),
+  send: (taskId: string, content: string) =>
+    api.post<ChatMessage>(`/tasks/${taskId}/messages`, { content }),
+};
+
+export interface Dispute {
+  id: string;
+  task_id: string;
+  opened_by_id: string;
+  reason: string;
+  status: "open" | "resolved" | "refunded";
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export const disputeService = {
+  get: (taskId: string) => api.get<Dispute | null>(`/tasks/${taskId}/disputes`),
+  open: (taskId: string, reason: string) =>
+    api.post<Dispute>(`/tasks/${taskId}/disputes`, { reason }),
+  resolve: (taskId: string, note?: string) =>
+    api.post<Dispute>(`/tasks/${taskId}/disputes/resolve`, { note }),
 };
