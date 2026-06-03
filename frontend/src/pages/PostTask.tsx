@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { APIProvider } from "@vis.gl/react-google-maps";
 import { taskService } from "@/lib/services";
 import { paths, VERTICALS } from "@/constants/routes";
 import { Button } from "@/components/ui";
 import { BoltIcon } from "@/components/icons";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import type { Vertical } from "@/types";
 import s from "./PostTask.module.css";
+
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 export default function PostTask() {
   const navigate = useNavigate();
@@ -17,6 +21,9 @@ export default function PostTask() {
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [location, setLocation] = useState("");
+  // Coordinates captured when the user picks a Places suggestion (null when typed freehand).
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [urgent, setUrgent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,6 +41,8 @@ export default function PostTask() {
         is_urgent: urgent,
         budget_min: budgetMin ? Number(budgetMin) : null,
         budget_max: budgetMax ? Number(budgetMax) : null,
+        latitude: lat,
+        longitude: lng,
         location_display: location || null,
       });
       navigate(paths.task(task.id));
@@ -108,8 +117,30 @@ export default function PostTask() {
 
         <div className={s.field}>
           <label className={s.label} htmlFor="loc">Location</label>
-          <input id="loc" className={s.input} value={location}
-            onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lozenets, Sofia" />
+          {MAPS_KEY ? (
+            <APIProvider apiKey={MAPS_KEY}>
+              <AddressAutocomplete
+                id="loc"
+                className={s.input}
+                placeholder="Start typing an address…"
+                value={location}
+                onChange={(t) => {
+                  // Freehand edit invalidates any previously picked coordinates.
+                  setLocation(t);
+                  setLat(null);
+                  setLng(null);
+                }}
+                onPick={(p) => {
+                  setLocation(p.display);
+                  setLat(p.latitude);
+                  setLng(p.longitude);
+                }}
+              />
+            </APIProvider>
+          ) : (
+            <input id="loc" className={s.input} value={location}
+              onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lozenets, Sofia" />
+          )}
         </div>
 
         <label className={s.toggle}>
