@@ -61,8 +61,9 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **passlib[bcrypt]** | ≥1.7 | Hashes passwords with bcrypt — never stores plain text | Password security |
 | **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
 | **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
-| **Stripe** | ≥9.0 | Payment intents with manual capture for escrow hold/release | Payments |
-| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST, Google Maps) | External API calls |
+| **Stripe** | ≥9.0 | Payment-intent adapter for escrow (optional) — escrow runs on a **mock** adapter by default; `payment_factory` selects which | Payments |
+| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST) | External API calls |
+| **@vis.gl/react-google-maps** | ≥1.8 | React wrapper for Google Maps + Places — pin-per-hiver map on Nearby Hivers and address autocomplete (captures lat/lng → PostGIS `location_point`) on Post-a-task; falls back to a free OpenStreetMap embed when keyless | Maps & geocoding (frontend) |
 | **python-multipart** | ≥0.0.30 | Parses `multipart/form-data` so FastAPI can accept file uploads | Task image uploads |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |

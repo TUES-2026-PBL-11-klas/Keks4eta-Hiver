@@ -4,10 +4,11 @@ This guide covers (1) putting the database in the cloud so the **whole team shar
 database** (no local Postgres needed), and (2) what you must provision to turn each
 "dummy" integration into a **real** one.
 
-> **TL;DR of what's real today:** Auth (password + Google/Facebook OAuth) and the full
-> task/offer/review marketplace are real and work against any Postgres. Payments, image
-> storage, maps, and push notifications are **scaffolded but not wired to live services
-> yet** — see [§3](#3-service-status--what-to-provision).
+> **TL;DR of what's real today:** Auth (password + Google/Facebook OAuth), the full
+> task/offer/review marketplace, **escrow** (mock payment adapter), **task chat**, **disputes**,
+> **visibility boosts**, **image upload on real Supabase Storage**, and **Google Maps + Places**
+> (map pins + address autocomplete) are all real. Only **push notifications** (FCM) remain
+> interface-only — see [§3](#3-service-status--what-to-provision).
 
 ---
 
@@ -48,6 +49,10 @@ views all work). Neon or Railway work too; steps are analogous.
 - **Migrations are the schema source of truth.** Don't edit tables in the Supabase UI; add an
   Alembic migration (project rule, see `CLAUDE.md`).
 - **Browsing:** use the Supabase Table Editor, or connect DBeaver to the pooler URL.
+- **Passwords with symbols:** prefer a DB password of only letters/digits. In a URL,
+  characters like `$ ^ * % @ /` must be percent-encoded (`$`→`%24`, `%`→`%25`, …), and `$`
+  also triggers `.env`/docker-compose variable substitution. `env.py` escapes `%` for
+  Alembic's ConfigParser, but an alphanumeric password avoids the whole class of issues.
 
 ---
 
@@ -70,6 +75,10 @@ Production hardening already in place / worth setting:
   add those redirect URIs in the Google/Facebook consoles.
 - A Kubernetes Helm chart + Terraform skeleton exist under `infra/` for the K8s target.
 
+> **Env + GitHub-secrets checklist:** the full list of which secret goes in `.env` vs the repo's
+> GitHub Actions secrets (for deploy) lives in [`HANDOFF.md`](./HANDOFF.md). CI (tests/lint) needs
+> none of them; only the deploy workflow does.
+
 ---
 
 ## 3. Service status & what to provision
@@ -78,38 +87,37 @@ Production hardening already in place / worth setting:
 |---|---|---|---|
 | **Google/Facebook OAuth** | Social login | ✅ **Implemented** (backend flow + frontend buttons) | Create OAuth apps, paste 4 env vars. See [§3.1](#31-googlefacebook-oauth-ready). |
 | **Shared Postgres** | All data | ✅ **Implemented** (pooler-safe) | Supabase project + env (§1). |
-| **Stripe (escrow)** | Hold/release payments | ⚠️ **Partial** — `StripeAdapter` written but **not wired**; no PaymentIntent is created on offer-accept; no webhook | Needs code (§3.2) + Stripe account. |
-| **Supabase Storage** | Task image uploads | ❌ **Interface only** (`IStoragePort`, empty `storage/`) | Needs adapter + upload endpoint (§3.3) + bucket. |
-| **Google Maps** | Map on "Nearby hivers" | ❌ **Unused** env var; UI shows a list | Needs Maps JS key + embed (§3.4). |
-| **Firebase** | Push notifications | ❌ **Interface only** | Needs adapter + device tokens (§3.5). |
+| **Escrow** | Hold/release/refund payments | ✅ **Implemented** via a **mock** payment adapter (`payment_factory`) | Works out of the box; swap to Stripe only if you want real charges (§3.2). |
+| **Supabase Storage** | Task image uploads | ✅ **Implemented** (`SupabaseStorageAdapter` + `POST /tasks/{id}/images`) | Create a `task-images` bucket + set `SUPABASE_*` (§3.3). |
+| **Google Maps + Places** | Map pins on Nearby Hivers + address autocomplete on Post-a-task | ✅ **Implemented** (`@vis.gl/react-google-maps`; OSM fallback when keyless) | Browser key in `frontend/.env` (§3.4). |
+| **Firebase** | Push notifications | ❌ **Interface only** (in-app notifications work; FCM does not) | Needs adapter + device tokens (§3.5). |
 
 ### 3.1 Google/Facebook OAuth (ready)
 Already works — just provision credentials. See the **Social login** section of [README.md](../README.md):
 create the OAuth apps, add the callback URIs, and set `GOOGLE_CLIENT_ID/SECRET`,
 `FACEBOOK_CLIENT_ID/SECRET` in `.env`. Restart the backend.
 
-### 3.2 Stripe escrow (needs wiring)
-What's missing to make payments real:
-1. A test Stripe account → `STRIPE_SECRET_KEY` (test mode), `STRIPE_WEBHOOK_SECRET`.
-2. Wire `StripeAdapter` through DI with a real Stripe client (today no use case receives it).
-3. Create a `PaymentIntent` (manual capture) + a `transactions` row when a client **accepts an
-   offer** (the escrow *hold*). Currently `ReleaseEscrowUseCase` only flips a domain status and
-   will 404 if no transaction exists.
-4. Capture on release (`release_payment`), refund on cancel, and add a `/payments/webhook`
-   endpoint to confirm intents.
-5. For real payouts to hivers, **Stripe Connect** (onboard hivers, `stripe_account_id`).
-   *I can build all of this — it needs your test Stripe keys to verify end-to-end.*
+### 3.2 Escrow (already works — Stripe optional)
+Escrow is **functional end-to-end on a mock payment adapter**: accepting an offer holds funds,
+completing a task releases them, cancelling refunds, and a dispute locks the escrow. No account
+needed. `payment_factory.get_payment_port()` selects the adapter, so to switch to **real** charges
+you'd add a Stripe adapter there + a test `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` and a
+`/payments/webhook` endpoint. (For real payouts to hivers: **Stripe Connect** + `stripe_account_id`.)
 
-### 3.3 Supabase Storage (needs adapter)
-1. Supabase → *Storage* → create a bucket `task-images`.
-2. `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` in `.env`.
-3. Build a `SupabaseStorageAdapter(IStoragePort)` + `POST /api/v1/tasks/{id}/images` use case,
-   and an image picker on PostTask/TaskDetail.
+### 3.3 Supabase Storage (just provision the bucket)
+The adapter + endpoint already exist (`SupabaseStorageAdapter`, `POST /api/v1/tasks/{id}/images`,
+image picker on the task page). To turn it on:
+1. Supabase → *Storage* → create a **public** bucket `task-images`.
+2. Set `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (service_role) in `.env`, restart the backend.
 
-### 3.4 Google Maps (needs embed)
-1. Google Cloud → enable *Maps JavaScript API* → create a browser key → `VITE_GOOGLE_MAPS_KEY`.
-2. Replace the list-only view in [NearbyHivers.tsx](../frontend/src/pages/NearbyHivers.tsx) with a
-   map showing hiver pins (the PostGIS search already returns coords/distance).
+### 3.4 Google Maps + Places (just add a key)
+The map ([NearbyHivers.tsx](../frontend/src/pages/NearbyHivers.tsx)) renders a pin per hiver and the
+Post-a-task location field ([PostTask.tsx](../frontend/src/pages/PostTask.tsx)) has Places address
+autocomplete that stores real coordinates on the task. To enable:
+1. Google Cloud → enable **Maps JavaScript API** + **Places API** → create a **browser key**
+   (restrict to your origins) → enable **billing** (free under demo limits).
+2. Put `VITE_GOOGLE_MAPS_KEY=<key>` in **`frontend/.env`** (see `frontend/.env.example`).
+   Without a key, the map falls back to a free OpenStreetMap embed and the field is a plain input.
 
 ### 3.5 Firebase push (needs adapter)
 1. Firebase project → service account JSON → `FIREBASE_CREDENTIALS_JSON`.
