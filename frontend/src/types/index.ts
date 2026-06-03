@@ -128,6 +128,8 @@ export interface HiverSearchResult {
   completed_tasks: number;
   is_available_now: boolean;
   work_radius_km: number;
+  latitude?: number | null;
+  longitude?: number | null;
   distance_km?: number | null;
   is_boosted?: boolean;
 }

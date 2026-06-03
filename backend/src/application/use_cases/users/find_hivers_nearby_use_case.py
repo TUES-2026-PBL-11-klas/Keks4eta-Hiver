@@ -47,6 +47,8 @@ class FindHiversNearbyUseCase:
                     completed_tasks=h.completed_tasks,
                     is_available_now=h.is_available_now,
                     work_radius_km=h.work_radius.km,
+                    latitude=h.location.latitude if h.location else None,
+                    longitude=h.location.longitude if h.location else None,
                     distance_km=distance,
                     is_boosted=h.id in boosted_ids,
                 )

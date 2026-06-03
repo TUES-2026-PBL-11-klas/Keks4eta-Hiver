@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -149,6 +150,14 @@ class PostgresTaskRepository(ITaskRepository):
                 budget_max=float(task.budget_max.value) if task.budget_max else None,
                 is_urgent=task.is_urgent,
                 location_display=task.location.display_address
+                if task.location
+                else None,
+                # Persist the PostGIS point (WGS 84) so geo-search can find the task.
+                # POINT takes (longitude latitude) order. WKTElement avoids a shapely dep.
+                location_point=WKTElement(
+                    f"POINT({task.location.longitude} {task.location.latitude})",
+                    srid=4326,
+                )
                 if task.location
                 else None,
                 smart_answers=task.smart_answers,
