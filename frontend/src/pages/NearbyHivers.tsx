@@ -46,6 +46,19 @@ export default function NearbyHivers() {
     );
   }
 
+  // Free OpenStreetMap embed (no API key) showing the search area + center marker.
+  const latDelta = radius / 111;
+  const lngDelta = radius / (111 * Math.cos((coords.lat * Math.PI) / 180));
+  const bbox = [
+    coords.lng - lngDelta,
+    coords.lat - latDelta,
+    coords.lng + lngDelta,
+    coords.lat + latDelta,
+  ].join(",");
+  const mapSrc =
+    `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}` +
+    `&layer=mapnik&marker=${coords.lat},${coords.lng}`;
+
   return (
     <div className="page-wrap">
       <header className={s.head}>
@@ -74,6 +87,16 @@ export default function NearbyHivers() {
             <option key={r} value={r}>{r} km</option>
           ))}
         </select>
+      </div>
+
+      <div className={s.mapWrap}>
+        <iframe
+          title="Search area map"
+          className={s.map}
+          src={mapSrc}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
       </div>
 
       {loading && (
