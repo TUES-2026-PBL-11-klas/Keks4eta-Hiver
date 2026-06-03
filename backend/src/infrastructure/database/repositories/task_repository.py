@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 import uuid
+
+from geoalchemy2.elements import WKTElement
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from src.domain.entities.task import Task, TaskStatus
-from src.domain.value_objects.money import Money
-from src.domain.value_objects.location import Location
 from src.domain.interfaces.repositories import ITaskRepository, PaginatedResult
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 from src.infrastructure.database.models import TaskModel
 
 
@@ -40,8 +43,11 @@ class PostgresTaskRepository(ITaskRepository):
         model = await self._session.get(TaskModel, task_id)
         return _model_to_domain(model) if model else None
 
-    async def find_nearby(self, location: Location, radius_km: int, vertical: str | None = None) -> list[Task]:
+    async def find_nearby(
+        self, location: Location, radius_km: int, vertical: str | None = None
+    ) -> list[Task]:
         from sqlalchemy import text
+
         query = text("""
             SELECT id FROM tasks
             WHERE status = 'open'
@@ -56,10 +62,15 @@ class PostgresTaskRepository(ITaskRepository):
                                  ST_MakePoint(:lng, :lat)::geography) ASC
             LIMIT 50
         """)
-        result = await self._session.execute(query, {
-            "lat": location.latitude, "lng": location.longitude,
-            "radius_m": radius_km * 1000, "vertical": vertical,
-        })
+        result = await self._session.execute(
+            query,
+            {
+                "lat": location.latitude,
+                "lng": location.longitude,
+                "radius_m": radius_km * 1000,
+                "vertical": vertical,
+            },
+        )
         ids = [row.id for row in result]
         tasks = []
         for task_id in ids:
@@ -103,9 +114,13 @@ class PostgresTaskRepository(ITaskRepository):
         items = [_model_to_domain(m) for m in result.scalars()]
         return PaginatedResult(items=items, total=total, page=page, page_size=page_size)
 
-    async def find_by_client(self, client_id: str, page: int = 1, page_size: int = 20) -> PaginatedResult[Task]:
+    async def find_by_client(
+        self, client_id: str, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Task]:
         count_result = await self._session.execute(
-            select(func.count()).select_from(TaskModel).where(TaskModel.client_id == client_id)
+            select(func.count())
+            .select_from(TaskModel)
+            .where(TaskModel.client_id == client_id)
         )
         total = count_result.scalar_one()
 
@@ -134,7 +149,17 @@ class PostgresTaskRepository(ITaskRepository):
                 budget_min=float(task.budget_min.value) if task.budget_min else None,
                 budget_max=float(task.budget_max.value) if task.budget_max else None,
                 is_urgent=task.is_urgent,
-                location_display=task.location.display_address if task.location else None,
+                location_display=task.location.display_address
+                if task.location
+                else None,
+                # Persist the PostGIS point (WGS 84) so geo-search can find the task.
+                # POINT takes (longitude latitude) order. WKTElement avoids a shapely dep.
+                location_point=WKTElement(
+                    f"POINT({task.location.longitude} {task.location.latitude})",
+                    srid=4326,
+                )
+                if task.location
+                else None,
                 smart_answers=task.smart_answers,
                 image_urls=task.image_urls,
                 expires_at=task.expires_at,
@@ -143,6 +168,7 @@ class PostgresTaskRepository(ITaskRepository):
         else:
             model.hiver_id = task.hiver_id
             model.status = task.status.value
+            model.image_urls = list(task.image_urls)
             model.updated_at = task.updated_at
         await self._session.flush()
         return task

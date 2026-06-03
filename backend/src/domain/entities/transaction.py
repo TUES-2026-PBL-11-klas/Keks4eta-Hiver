@@ -38,10 +38,10 @@ class Transaction:
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def release(self) -> None:
-        """Release escrow to hiver after task completion."""
+        """Release escrow to hiver after task completion (or to settle a dispute)."""
         if self.status == TransactionStatus.RELEASED:
             raise EscrowAlreadyReleasedError(self.task_id)
-        if self.status != TransactionStatus.HELD:
+        if self.status not in (TransactionStatus.HELD, TransactionStatus.DISPUTED):
             raise TaskNotCompletedError(self.task_id)
         self.status = TransactionStatus.RELEASED
         self.released_at = datetime.utcnow()

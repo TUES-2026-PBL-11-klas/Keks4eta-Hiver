@@ -5,6 +5,7 @@ from sqlalchemy import select
 from passlib.context import CryptContext
 
 from src.domain.entities.user import Client, Hiver
+from src.domain.value_objects.location import Location
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository, PaginatedResult
@@ -22,6 +23,8 @@ def _client_model_to_domain(u: UserModel, c: ClientModel) -> Client:
         phone=u.phone,
         avatar_url=u.avatar_url,
         is_active=u.is_active,
+        oauth_provider=u.oauth_provider,
+        oauth_id=u.oauth_id,
         rating_as_client=Rating(float(c.rating_as_client)),
         total_tasks=c.total_tasks,
         review_count=c.review_count,
@@ -37,6 +40,8 @@ def _hiver_model_to_domain(u: UserModel, h: HiverModel) -> Hiver:
         phone=u.phone,
         avatar_url=u.avatar_url,
         is_active=u.is_active,
+        oauth_provider=u.oauth_provider,
+        oauth_id=u.oauth_id,
         bio=h.bio,
         xp_points=h.xp_points,
         level=h.level,
@@ -75,6 +80,17 @@ class PostgresClientRepository(IClientRepository):
             return None
         return _client_model_to_domain(row.UserModel, row.ClientModel)
 
+    async def find_by_oauth(self, provider: str, oauth_id: str) -> Client | None:
+        result = await self._session.execute(
+            select(UserModel, ClientModel)
+            .join(ClientModel, UserModel.id == ClientModel.user_id)
+            .where(UserModel.oauth_provider == provider, UserModel.oauth_id == oauth_id)
+        )
+        row = result.first()
+        if not row:
+            return None
+        return _client_model_to_domain(row.UserModel, row.ClientModel)
+
     async def save(self, entity: Client) -> Client:
         user = await self._session.get(UserModel, entity.id)
         if user is None:
@@ -87,6 +103,8 @@ class PostgresClientRepository(IClientRepository):
                 avatar_url=entity.avatar_url,
                 role="client",
                 is_active=entity.is_active,
+                oauth_provider=entity.oauth_provider,
+                oauth_id=entity.oauth_id,
             )
             client = ClientModel(
                 user_id=user.id,
@@ -153,6 +171,17 @@ class PostgresHiverRepository(IHiverRepository):
             return None
         return _hiver_model_to_domain(row.UserModel, row.HiverModel)
 
+    async def find_by_oauth(self, provider: str, oauth_id: str) -> Hiver | None:
+        result = await self._session.execute(
+            select(UserModel, HiverModel)
+            .join(HiverModel, UserModel.id == HiverModel.user_id)
+            .where(UserModel.oauth_provider == provider, UserModel.oauth_id == oauth_id)
+        )
+        row = result.first()
+        if not row:
+            return None
+        return _hiver_model_to_domain(row.UserModel, row.HiverModel)
+
     async def save(self, entity: Hiver) -> Hiver:
         user = await self._session.get(UserModel, entity.id)
         if user is None:
@@ -165,6 +194,8 @@ class PostgresHiverRepository(IHiverRepository):
                 avatar_url=entity.avatar_url,
                 role="hiver",
                 is_active=entity.is_active,
+                oauth_provider=entity.oauth_provider,
+                oauth_id=entity.oauth_id,
             )
             hiver = HiverModel(
                 user_id=user.id,
@@ -206,10 +237,31 @@ class PostgresHiverRepository(IHiverRepository):
              "radius": radius_km, "vertical": vertical},
         )
         ids = [row.user_id for row in result]
+        if not ids:
+            return []
+        # The PL/pgSQL function returns only user_id; fetch each hiver's coordinates
+        # in one batch so the domain entity carries a real Location (drives both the
+        # distance shown in the UI and the map pins). ST_X/ST_Y avoid a shapely dep.
+        coord_rows = await self._session.execute(
+            text(
+                """
+                SELECT user_id,
+                       ST_Y(location_point::geometry) AS lat,
+                       ST_X(location_point::geometry) AS lng
+                FROM hivers
+                WHERE user_id = ANY(:ids) AND location_point IS NOT NULL
+                """
+            ),
+            {"ids": ids},
+        )
+        coords = {r.user_id: (r.lat, r.lng) for r in coord_rows}
         hivers = []
         for hiver_id in ids:
             h = await self.find_by_id(hiver_id)
             if h:
+                if hiver_id in coords:
+                    lat, lng = coords[hiver_id]
+                    h.location = Location(latitude=lat, longitude=lng)
                 hivers.append(h)
         return hivers
 

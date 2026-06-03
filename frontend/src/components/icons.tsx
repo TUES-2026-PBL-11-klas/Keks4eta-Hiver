@@ -192,3 +192,76 @@ export const GoogleIcon = (p: IconProps) => (
     <path fill="#EA4335" d="M12 5.5c1.6 0 3.04.55 4.18 1.63l3.13-3.13C17.43 2.18 14.95 1.2 12 1.2A11 11 0 0 0 2.23 7l3.65 2.85C6.74 7.42 9.15 5.5 12 5.5Z" />
   </svg>
 );
+
+export const FacebookIcon = (p: IconProps) => (
+  <svg width={p.size ?? 18} height={p.size ?? 18} viewBox="0 0 24 24" aria-hidden="true" {...p}>
+    <path fill="#1877F2" d="M24 12a12 12 0 1 0-13.88 11.85v-8.38H7.08V12h3.04V9.36c0-3 1.79-4.67 4.53-4.67 1.31 0 2.68.24 2.68.24v2.95h-1.51c-1.49 0-1.95.92-1.95 1.87V12h3.32l-.53 3.47h-2.79v8.38A12 12 0 0 0 24 12Z" />
+  </svg>
+);
+
+export const StarIcon = ({ filled = false, ...p }: IconProps & { filled?: boolean }) => (
+  <Base {...p} fill={filled ? "currentColor" : "none"}>
+    <path d="m12 3 2.6 5.3 5.9.86-4.25 4.14 1 5.87L12 16.9l-5.25 2.77 1-5.87L3.5 9.16l5.9-.86Z" />
+  </Base>
+);
+
+export const LogOutIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" />
+    <path d="M16 17l5-5-5-5M21 12H9" />
+  </Base>
+);
+
+export const MenuIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M3 6h18M3 12h18M3 18h18" />
+  </Base>
+);
+
+export const CloseIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M6 6l12 12M18 6 6 18" />
+  </Base>
+);
+
+export const ClockIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3.5 2" />
+  </Base>
+);
+
+export const CalendarIcon = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3.5" y="5" width="17" height="16" rx="2" />
+    <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+  </Base>
+);
+
+export const HeartIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 20s-7-4.3-9.2-9A4.6 4.6 0 0 1 12 6.6 4.6 4.6 0 0 1 21.2 11C19 15.7 12 20 12 20Z" />
+  </Base>
+);
+
+export const GridIcon = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+    <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+    <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+    <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+  </Base>
+);
+
+export const SettingsIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05a1.7 1.7 0 0 0-2.87 1.2V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-2.87-1.2l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.2-2.87l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05a1.7 1.7 0 0 0 2.87-1.2V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 2.87 1.2l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.4 9Z" />
+  </Base>
+);
+
+export const ChevronRightIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="m9 6 6 6-6 6" />
+  </Base>
+);

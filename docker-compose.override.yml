@@ -1,8 +1,0 @@
-# LOCAL-ONLY, do not commit.
-# This machine already runs a native PostgreSQL on host port 5432, which
-# shadows the Docker container. Publish the container on 5433 instead and
-# point backend/.env DATABASE_URL at localhost:5433.
-services:
-  postgres:
-    ports:
-      - "5433:5432"

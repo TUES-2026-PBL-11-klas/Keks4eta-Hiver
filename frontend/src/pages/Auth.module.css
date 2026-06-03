@@ -1,8 +1,32 @@
+/* Full-screen warm field that centers the auth card on tablet/desktop. */
+.screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, var(--honey-100) 0%, transparent 55%),
+    radial-gradient(90% 60% at 50% 110%, var(--paper-deep) 0%, transparent 60%);
+}
+
 .page {
-  min-height: 100%;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--card);
+}
+
+@media (min-width: 640px) {
+  .screen { align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-4); }
+  .page {
+    min-height: 0;
+    max-width: 470px;
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--line);
+  }
 }
 
 /* ── Honey hero arc ──────────────────────────────────────────────────── */
@@ -211,6 +235,12 @@
   background: var(--line-strong);
 }
 
+.socialRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .social {
   display: flex;
   align-items: center;
@@ -224,9 +254,10 @@
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--ink);
-  transition: background 0.16s, border-color 0.16s;
+  transition: background 0.16s, border-color 0.16s, transform 0.16s;
 }
-.social:hover { background: var(--card-2); border-color: var(--line); }
+.social:hover { background: var(--card-2); border-color: var(--line); transform: translateY(-1px); }
+.social:active { transform: translateY(0) scale(0.98); }
 
 /* ── Footer link ─────────────────────────────────────────────────────── */
 .foot {

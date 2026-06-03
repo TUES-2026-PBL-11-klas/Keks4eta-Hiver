@@ -7,19 +7,26 @@ dependencies = [
     "uvicorn[standard]>=0.30.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
+    "email-validator>=2.0.0",
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29.0",
     "alembic>=1.13.0",
     "redis>=5.0.0",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
-    "stripe>=9.0.0",
+    # passlib 1.7.4's bcrypt backend is incompatible with bcrypt >= 4.1
+    # (the 1.7.x line is unmaintained). Pin to the last compatible release.
+    "bcrypt>=4.0.1,<4.1",
+    "authlib>=1.3.0",
+    "itsdangerous>=2.2.0",
+    "stripe>=15.2.0",
     "httpx>=0.27.0",
     "geoalchemy2>=0.15.0",
     "dependency-injector>=4.41.0",
     "structlog>=24.0.0",
     "prometheus-fastapi-instrumentator>=7.0.0",
     "slowapi>=0.1.9",
+    "python-multipart>=0.0.30",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +43,11 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# This is an application (run via `uvicorn src.main:app`), not an installable
+# library — so uv should install dependencies only, not try to build `src/`.
+[tool.uv]
+package = false
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
@@ -43,6 +55,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI uses these callables as argument defaults by design (like Query/Depends).
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.UploadFile"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -1,0 +1,134 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.bell:hover {
+  background: var(--paper);
+}
+.bell:active {
+  transform: scale(0.95);
+}
+
+.badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--honey, #ee7f22);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, 86vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--card, #fff);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 34, 79, 0.16);
+  z-index: 60;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  background: var(--card, #fff);
+}
+
+.markAll {
+  border: none;
+  background: none;
+  color: var(--honey, #ee7f22);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ink-soft, #5b6b82);
+  font-size: 14px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.item:hover {
+  background: var(--paper);
+}
+
+.unread {
+  background: color-mix(in srgb, var(--honey, #ee7f22) 8%, transparent);
+}
+.unread .itemTitle::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--honey, #ee7f22);
+  vertical-align: middle;
+}
+
+.itemTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+.itemBody {
+  font-size: 13px;
+  color: var(--ink-soft, #5b6b82);
+}
+.itemTime {
+  font-size: 11px;
+  color: var(--ink-soft, #8b97a8);
+  margin-top: 2px;
+}

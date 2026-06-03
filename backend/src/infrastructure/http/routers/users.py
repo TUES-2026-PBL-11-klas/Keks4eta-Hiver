@@ -1,29 +1,83 @@
 from fastapi import APIRouter, Query
 
-from src.infrastructure.http.dependencies import SessionDep, HiverDep, UserPayloadDep
-from src.infrastructure.database.repositories.user_repository import (
-    PostgresClientRepository,
-    PostgresHiverRepository,
-)
-from src.domain.errors.domain_errors import ClientNotFoundError, HiverNotFoundError
+from src.application.dtos.boost_dtos import BoostResponse, BuyBoostRequest
+from src.application.dtos.review_dtos import ReviewResponse
 from src.application.dtos.user_dtos import (
     ClientProfileResponse,
     HiverProfileResponse,
-    UpdateHiverAvailabilityRequest,
     HiverSearchResult,
+    MeResponse,
+    UpdateHiverAvailabilityRequest,
 )
-from src.application.use_cases.users.find_hivers_nearby_use_case import (
-    FindHiversNearbyUseCase,
+from src.application.use_cases.boosts.boost_use_cases import (
+    BuyBoostUseCase,
+    GetMyBoostUseCase,
 )
 from src.application.use_cases.reviews.list_reviews_use_case import (
     ListUserReviewsUseCase,
 )
-from src.application.dtos.review_dtos import ReviewResponse
+from src.application.use_cases.users.find_hivers_nearby_use_case import (
+    FindHiversNearbyUseCase,
+)
+from src.domain.errors.domain_errors import ClientNotFoundError, HiverNotFoundError
+from src.infrastructure.database.repositories.boost_repository import (
+    PostgresBoostRepository,
+)
 from src.infrastructure.database.repositories.review_repository import (
     PostgresReviewRepository,
 )
+from src.infrastructure.database.repositories.user_repository import (
+    PostgresClientRepository,
+    PostgresHiverRepository,
+)
+from src.infrastructure.http.dependencies import HiverDep, SessionDep, UserPayloadDep
+from src.infrastructure.payments.payment_factory import get_payment_port
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/me", response_model=MeResponse)
+async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
+    """Return the currently authenticated user (role-aware)."""
+    user_id = payload["sub"]
+    if payload.get("role") == "hiver":
+        hiver = await PostgresHiverRepository(session).find_by_id(user_id)
+        if hiver is None:
+            raise HiverNotFoundError(user_id)
+        return MeResponse(
+            id=hiver.id,
+            email=hiver.email,
+            full_name=hiver.full_name,
+            role="hiver",
+            phone=hiver.phone,
+            avatar_url=hiver.avatar_url,
+            is_oauth=hiver.oauth_provider is not None,
+            bio=hiver.bio or "",
+            level=hiver.level,
+            xp_points=hiver.xp_points,
+            avg_rating=float(hiver.avg_rating.value),
+            completed_tasks=hiver.completed_tasks,
+            review_count=hiver.review_count,
+            is_available_now=hiver.is_available_now,
+            work_radius_km=hiver.work_radius.km,
+            skills=hiver.skills,
+        )
+
+    client = await PostgresClientRepository(session).find_by_id(user_id)
+    if client is None:
+        raise ClientNotFoundError(user_id)
+    return MeResponse(
+        id=client.id,
+        email=client.email,
+        full_name=client.full_name,
+        role="client",
+        phone=client.phone,
+        avatar_url=client.avatar_url,
+        is_oauth=client.oauth_provider is not None,
+        rating_as_client=float(client.rating_as_client.value),
+        total_tasks=client.total_tasks,
+        review_count=client.review_count,
+    )
 
 
 @router.get("/hivers/nearby", response_model=list[HiverSearchResult])
@@ -34,14 +88,41 @@ async def find_hivers_nearby(
     radius_km: float = Query(10.0, gt=0.0, le=100.0),
     vertical: str | None = Query(None, description="home|learn|tech|care|move|events"),
 ) -> list[HiverSearchResult]:
-    use_case = FindHiversNearbyUseCase(hiver_repo=PostgresHiverRepository(session))
+    use_case = FindHiversNearbyUseCase(
+        hiver_repo=PostgresHiverRepository(session),
+        boost_repo=PostgresBoostRepository(session),
+    )
     return await use_case.execute(
         latitude=lat, longitude=lng, radius_km=radius_km, vertical=vertical
     )
 
 
+@router.post("/hivers/me/boost", response_model=BoostResponse, status_code=201)
+async def buy_boost(
+    body: BuyBoostRequest,
+    session: SessionDep,
+    hiver: HiverDep,
+) -> BoostResponse:
+    use_case = BuyBoostUseCase(
+        boost_repo=PostgresBoostRepository(session),
+        payment_port=get_payment_port(),
+    )
+    return await use_case.execute(hiver_id=hiver.id, vertical=body.vertical)
+
+
+@router.get("/hivers/me/boost", response_model=BoostResponse | None)
+async def get_my_boost(
+    session: SessionDep,
+    hiver: HiverDep,
+) -> BoostResponse | None:
+    use_case = GetMyBoostUseCase(boost_repo=PostgresBoostRepository(session))
+    return await use_case.execute(hiver_id=hiver.id)
+
+
 @router.get("/clients/{client_id}", response_model=ClientProfileResponse)
-async def get_client_profile(client_id: str, session: SessionDep) -> ClientProfileResponse:
+async def get_client_profile(
+    client_id: str, session: SessionDep
+) -> ClientProfileResponse:
     client = await PostgresClientRepository(session).find_by_id(client_id)
     if client is None:
         raise ClientNotFoundError(client_id)
@@ -61,6 +142,7 @@ async def get_hiver_profile(hiver_id: str, session: SessionDep) -> HiverProfileR
     hiver = await PostgresHiverRepository(session).find_by_id(hiver_id)
     if hiver is None:
         raise HiverNotFoundError(hiver_id)
+    boost = await PostgresBoostRepository(session).find_active_for_hiver(hiver_id)
     return HiverProfileResponse(
         user_id=hiver.id,
         full_name=hiver.full_name,
@@ -75,6 +157,7 @@ async def get_hiver_profile(hiver_id: str, session: SessionDep) -> HiverProfileR
         is_available_now=hiver.is_available_now,
         work_radius_km=hiver.work_radius.km,
         skills=hiver.skills,
+        is_boosted=boost is not None,
     )
 
 

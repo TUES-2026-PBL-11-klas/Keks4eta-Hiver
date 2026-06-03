@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class ClientProfileResponse(BaseModel):
@@ -28,8 +27,38 @@ class HiverProfileResponse(BaseModel):
     is_available_now: bool
     work_radius_km: int
     skills: list[str] = []
+    is_boosted: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class MeResponse(BaseModel):
+    """Current authenticated user — unified shape across roles.
+
+    Role-specific fields are populated only for the matching role and are
+    otherwise None, so the SPA can render one model regardless of role.
+    """
+
+    id: str
+    email: str
+    full_name: str
+    role: str
+    phone: str | None = None
+    avatar_url: str | None = None
+    is_oauth: bool = False
+    # hiver-only
+    bio: str | None = None
+    level: str | None = None
+    xp_points: int | None = None
+    avg_rating: float | None = None
+    completed_tasks: int | None = None
+    is_available_now: bool | None = None
+    work_radius_km: int | None = None
+    skills: list[str] = []
+    # client-only
+    rating_as_client: float | None = None
+    total_tasks: int | None = None
+    review_count: int | None = None
 
 
 class UpdateHiverAvailabilityRequest(BaseModel):
@@ -45,6 +74,9 @@ class HiverSearchResult(BaseModel):
     completed_tasks: int
     is_available_now: bool
     work_radius_km: int
+    latitude: float | None = None
+    longitude: float | None = None
     distance_km: float | None = None
+    is_boosted: bool = False
 
     model_config = {"from_attributes": True}

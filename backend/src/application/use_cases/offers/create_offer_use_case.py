@@ -6,6 +6,7 @@ from src.domain.errors.domain_errors import (
     OfferAlreadyExistsError, TaskAlreadyAcceptedError,
 )
 from src.domain.interfaces.repositories import ITaskRepository, IOfferRepository, IHiverRepository
+from src.domain.services.event_bus import EventBus, notify
 from src.application.dtos.offer_dtos import CreateOfferRequest, OfferResponse
 
 
@@ -20,10 +21,12 @@ class CreateOfferUseCase:
         task_repo: ITaskRepository,
         offer_repo: IOfferRepository,
         hiver_repo: IHiverRepository,
+        event_bus: EventBus | None = None,
     ) -> None:
         self._task_repo = task_repo
         self._offer_repo = offer_repo
         self._hiver_repo = hiver_repo
+        self._event_bus = event_bus
 
     async def execute(self, request: CreateOfferRequest, task_id: str, hiver_id: str) -> OfferResponse:
         task = await self._task_repo.find_by_id(task_id)
@@ -50,6 +53,14 @@ class CreateOfferUseCase:
             estimated_hours=request.estimated_hours,
         )
         await self._offer_repo.save(offer)
+
+        await notify(
+            self._event_bus,
+            task.client_id,
+            "New offer on your task",
+            f"{hiver.full_name} offered {request.price:.0f} BGN on '{task.title}'.",
+            {"task_id": task_id, "offer_id": offer.id},
+        )
 
         return OfferResponse(
             id=offer.id,
