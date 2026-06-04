@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from domain.errors.domain_errors import (
     TaskAlreadyAcceptedError,
@@ -45,7 +46,7 @@ class Task:
     budget_max: Money | None = None
     is_urgent: bool = False
     location: Location | None = None
-    smart_answers: dict = field(default_factory=dict)
+    smart_answers: dict[str, Any] = field(default_factory=dict)
     image_urls: list[str] = field(default_factory=list)
     expires_at: datetime | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)

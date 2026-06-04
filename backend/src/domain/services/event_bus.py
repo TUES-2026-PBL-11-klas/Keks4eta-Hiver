@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class DomainEvent:
     event_type: str
-    payload: dict
+    payload: dict[str, Any]
 
 
 Handler = Callable[[DomainEvent], Awaitable[None]]
@@ -47,7 +48,7 @@ async def notify(
     recipient_id: str,
     title: str,
     body: str,
-    data: dict | None = None,
+    data: dict[str, Any] | None = None,
 ) -> None:
     """
     Convenience for use cases: emit a notification event if a bus is wired.

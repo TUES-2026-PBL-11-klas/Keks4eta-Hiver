@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 from domain.value_objects.money import Money
 
@@ -42,7 +43,7 @@ class NotificationPayload:
     recipient_id: str
     title: str
     body: str
-    data: dict
+    data: dict[str, Any]
 
 
 class INotificationPort(ABC):

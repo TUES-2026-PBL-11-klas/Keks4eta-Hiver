@@ -1,3 +1,4 @@
+from typing import Any, cast
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Path, Query, Request
@@ -82,7 +83,7 @@ async def oauth_login(
     base = settings.oauth_redirect_base_url.rstrip("/")
     redirect_uri = f"{base}{settings.api_prefix}/auth/oauth/{provider}/callback"
     client = oauth.create_client(provider)
-    return await client.authorize_redirect(request, redirect_uri)
+    return cast(RedirectResponse, await client.authorize_redirect(request, redirect_uri))
 
 
 @router.get("/oauth/{provider}/callback")
@@ -105,7 +106,7 @@ async def oauth_callback(
         return RedirectResponse(f"{settings.frontend_url}/login?error=oauth_failed")
 
     role = request.session.pop("oauth_role", "client")
-    info.role = role  # type: ignore[assignment]
+    info.role = role
 
     use_case = OAuthLoginUseCase(
         client_repo=PostgresClientRepository(session),
@@ -120,7 +121,7 @@ async def oauth_callback(
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#{fragment}")
 
 
-async def _extract_user_info(provider: str, client, token) -> OAuthUserInfo:
+async def _extract_user_info(provider: str, client: Any, token: Any) -> OAuthUserInfo:
     """Normalize the provider-specific userinfo payload into our DTO."""
     if provider == "google":
         data = token.get("userinfo")

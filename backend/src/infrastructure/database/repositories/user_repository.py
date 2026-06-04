@@ -109,14 +109,14 @@ class PostgresClientRepository(IClientRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            client = ClientModel(
+            new_client = ClientModel(
                 user_id=user.id,
                 rating_as_client=entity.rating_as_client.value,
                 total_tasks=entity.total_tasks,
                 review_count=entity.review_count,
             )
             self._session.add(user)
-            self._session.add(client)
+            self._session.add(new_client)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
@@ -204,7 +204,7 @@ class PostgresHiverRepository(IHiverRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            hiver = HiverModel(
+            new_hiver = HiverModel(
                 user_id=user.id,
                 bio=entity.bio,
                 xp_points=entity.xp_points,
@@ -216,7 +216,7 @@ class PostgresHiverRepository(IHiverRepository):
                 work_radius_km=entity.work_radius.km,
             )
             self._session.add(user)
-            self._session.add(hiver)
+            self._session.add(new_hiver)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
@@ -236,7 +236,7 @@ class PostgresHiverRepository(IHiverRepository):
         return entity
 
     async def find_available_near(
-        self, location, radius_km, vertical=None
+        self, location: Location, radius_km: int, vertical: str | None = None
     ) -> list[Hiver]:
         # Uses the PL/pgSQL function from migration 014
         from sqlalchemy import text

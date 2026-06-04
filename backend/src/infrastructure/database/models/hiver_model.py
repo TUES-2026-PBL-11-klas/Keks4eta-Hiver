@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from geoalchemy2 import Geography
 from sqlalchemy import DECIMAL, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .boost_model import BoostModel
+    from .offer_model import OfferModel
+    from .skill_model import SkillModel
+    from .task_model import TaskModel
+    from .user_model import UserModel
 
 
 class HiverModel(Base):

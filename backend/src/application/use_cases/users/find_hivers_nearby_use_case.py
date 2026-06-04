@@ -27,7 +27,7 @@ class FindHiversNearbyUseCase:
     ) -> list[HiverSearchResult]:
         origin = Location(latitude=latitude, longitude=longitude)
         hivers = await self._hiver_repo.find_available_near(
-            location=origin, radius_km=radius_km, vertical=vertical
+            location=origin, radius_km=int(radius_km), vertical=vertical
         )
 
         boosted_ids: set[str] = set()

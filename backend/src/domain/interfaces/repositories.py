@@ -69,12 +69,12 @@ class Success[T]:
 
 
 @dataclass(frozen=True)
-class Failure[E: "Exception"]:  # type: ignore[type-var]
+class Failure[E: "Exception"]:
     error: E
     success: bool = False
 
 
-Result = Success[T] | Failure  # type alias
+Result = Success[T] | Failure[Exception]  # type alias
 
 
 # ── Interface Segregation (SOLID — I) ───────────────────────────────────────

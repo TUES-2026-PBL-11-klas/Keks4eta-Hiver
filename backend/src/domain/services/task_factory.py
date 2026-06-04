@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from domain.entities.task import VALID_VERTICALS, Task
 from domain.errors.domain_errors import InvalidVerticalError
@@ -17,7 +18,7 @@ class TaskCreateData:
     subcategory: str
     title: str
     description: str
-    smart_answers: dict
+    smart_answers: dict[str, Any]
     is_urgent: bool = False
     budget_min: float | None = None
     budget_max: float | None = None

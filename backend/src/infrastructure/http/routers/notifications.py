@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Query
 
 from src.application.dtos.notification_dtos import (
@@ -44,7 +46,7 @@ async def unread_count(
 async def mark_all_read(
     session: SessionDep,
     payload: UserPayloadDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = MarkAllNotificationsReadUseCase(PostgresNotificationRepository(session))
     return {"marked": await use_case.execute(user_id=payload["sub"])}
 
@@ -54,7 +56,7 @@ async def mark_read(
     notification_id: str,
     session: SessionDep,
     payload: UserPayloadDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = MarkNotificationReadUseCase(PostgresNotificationRepository(session))
     ok = await use_case.execute(notification_id=notification_id, user_id=payload["sub"])
     return {"ok": ok}

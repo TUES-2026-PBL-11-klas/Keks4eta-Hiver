@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter
 
 from src.application.dtos.payment_dtos import EscrowResponse
@@ -41,7 +43,7 @@ async def release_escrow(
     session: SessionDep,
     client: ClientDep,
     bus: EventBusDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = ReleaseEscrowUseCase(
         task_repo=PostgresTaskRepository(session),
         transaction_repo=PostgresTransactionRepository(session),

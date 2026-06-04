@@ -1,3 +1,5 @@
+from typing import Any
+
 from src.domain.entities.task import TaskStatus
 from src.domain.errors.domain_errors import (
     TaskNotCompletedError,
@@ -33,7 +35,7 @@ class ReleaseEscrowUseCase:
         self._payment_port = payment_port
         self._event_bus = event_bus
 
-    async def execute(self, task_id: str, client_id: str) -> dict:
+    async def execute(self, task_id: str, client_id: str) -> dict[str, Any]:
         task = await self._task_repo.find_by_id(task_id)
         if task is None:
             raise TaskNotFoundError(task_id)

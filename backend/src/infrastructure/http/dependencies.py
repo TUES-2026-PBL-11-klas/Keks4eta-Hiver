@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,14 +27,14 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 async def get_current_user_payload(
     authorization: Annotated[str | None, Header()] = None,
-) -> dict:
+) -> dict[str, Any]:
     if not authorization or not authorization.startswith("Bearer "):
         raise InvalidTokenError()
     token = authorization.removeprefix("Bearer ")
     return decode_token(token)
 
 
-UserPayloadDep = Annotated[dict, Depends(get_current_user_payload)]
+UserPayloadDep = Annotated[dict[str, Any], Depends(get_current_user_payload)]
 
 
 async def get_current_client(

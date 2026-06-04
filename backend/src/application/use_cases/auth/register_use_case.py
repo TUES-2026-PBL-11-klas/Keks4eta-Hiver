@@ -37,7 +37,7 @@ class RegisterUseCase:
         password_hash = hash_password(request.password)
 
         if request.role == "client":
-            user = Client(
+            client = Client(
                 id=user_id,
                 email=request.email,
                 _password_hash=password_hash,
@@ -45,9 +45,9 @@ class RegisterUseCase:
                 phone=request.phone,
                 rating_as_client=Rating(5.0),
             )
-            await self._client_repo.save(user)
+            await self._client_repo.save(client)
         else:
-            user = Hiver(
+            hiver = Hiver(
                 id=user_id,
                 email=request.email,
                 _password_hash=password_hash,
@@ -55,7 +55,7 @@ class RegisterUseCase:
                 phone=request.phone,
                 work_radius=WorkRadius.default(),
             )
-            await self._hiver_repo.save(user)
+            await self._hiver_repo.save(hiver)
 
         return TokenResponse(
             access_token=create_access_token(user_id, request.role),

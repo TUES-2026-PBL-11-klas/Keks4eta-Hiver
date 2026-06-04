@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .client_model import ClientModel
+    from .hiver_model import HiverModel
+    from .message_model import MessageModel
+    from .notification_log_model import NotificationLogModel
+    from .review_model import ReviewModel
 
 
 class UserModel(Base):

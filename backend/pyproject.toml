@@ -61,6 +61,7 @@ extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.UploadFile"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+mypy_path = "src"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
