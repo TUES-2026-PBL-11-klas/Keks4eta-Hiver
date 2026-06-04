@@ -1,16 +1,25 @@
-# Stage 1: Install dependencies only
-FROM python:3.14-slim AS deps
+# Stage 1: Install dependencies
+FROM python:3.13-alpine AS deps
 WORKDIR /app
-RUN pip install uv
-COPY pyproject.toml ./
-RUN uv sync --no-dev
+
+# Build tools needed for C extensions (cryptography, argon2-cffi, asyncpg, dependency-injector)
+RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev binutils
+
+RUN pip install --no-cache-dir uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --frozen && \
+    find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.venv -name "*.so" -exec strip --strip-debug {} + 2>/dev/null || true
 
 # Stage 2: Production image — minimal
-FROM python:3.14-slim AS production
+FROM python:3.13-alpine AS production
 WORKDIR /app
 
+# Runtime libraries only (no build tools)
+RUN apk add --no-cache libffi openssl
+
 # Security: non-root user
-RUN groupadd -r hiver && useradd -r -g hiver hiver
+RUN addgroup -S hiver && adduser -S -G hiver hiver
 
 # Copy only what's needed from deps stage
 COPY --from=deps /app/.venv .venv
