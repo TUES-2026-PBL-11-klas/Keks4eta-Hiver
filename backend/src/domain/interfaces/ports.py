@@ -66,7 +66,7 @@ class IStoragePort(ABC):
     Abstracts object storage (Supabase Storage, Cloudflare R2, S3).
     """
 
-    async def ensure_bucket(self, bucket: str, public: bool = True) -> None:
+    async def ensure_bucket(self, bucket: str, public: bool = True) -> None:  # noqa: B027
         """Optionally ensure the bucket exists. No-op by default."""
 
     @abstractmethod
