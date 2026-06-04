@@ -74,6 +74,8 @@ class HiverSearchResult(BaseModel):
     completed_tasks: int
     is_available_now: bool
     work_radius_km: int
+    latitude: float | None = None
+    longitude: float | None = None
     distance_km: float | None = None
     is_boosted: bool = False
 

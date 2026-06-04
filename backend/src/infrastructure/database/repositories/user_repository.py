@@ -11,6 +11,7 @@ from src.domain.interfaces.repositories import (
     IHiverRepository,
     PaginatedResult,
 )
+from src.domain.value_objects.location import Location
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
 from src.infrastructure.database.models import ClientModel, HiverModel, UserModel
@@ -252,10 +253,31 @@ class PostgresHiverRepository(IHiverRepository):
             },
         )
         ids = [row.user_id for row in result]
+        if not ids:
+            return []
+        # The PL/pgSQL function returns only user_id; fetch each hiver's coordinates
+        # in one batch so the domain entity carries a real Location (drives both the
+        # distance shown in the UI and the map pins). ST_X/ST_Y avoid a shapely dep.
+        coord_rows = await self._session.execute(
+            text(
+                """
+                SELECT user_id,
+                       ST_Y(location_point::geometry) AS lat,
+                       ST_X(location_point::geometry) AS lng
+                FROM hivers
+                WHERE user_id = ANY(:ids) AND location_point IS NOT NULL
+                """
+            ),
+            {"ids": ids},
+        )
+        coords = {r.user_id: (r.lat, r.lng) for r in coord_rows}
         hivers = []
         for hiver_id in ids:
             h = await self.find_by_id(hiver_id)
             if h:
+                if hiver_id in coords:
+                    lat, lng = coords[hiver_id]
+                    h.location = Location(latitude=lat, longitude=lng)
                 hivers.append(h)
         return hivers
 

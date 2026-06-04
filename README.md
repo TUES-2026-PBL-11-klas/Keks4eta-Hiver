@@ -15,7 +15,8 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace completion | 🔄 In progress — escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: full test coverage & polish | — |
+| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅ | — |
+| 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
 
 ## Tech Stack (short)
 
@@ -28,8 +29,9 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
 | Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
-| Payments | Stripe (manual capture for escrow) |
+| Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
 | Storage | Supabase Storage (task images) |
+| Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — map pins on Nearby Hivers, address autocomplete on Post-a-task |
 | Frontend | React 18 + TypeScript 5 + Vite 5 + Framer Motion (responsive web app) |
 | Container | Docker (multi-stage) + docker-compose |
 | Infra (target) | Kubernetes + Helm + Terraform |
@@ -100,6 +102,20 @@ credentials in `.env` (see `.env.example`):
 
 Leave a provider's credentials blank to disable it (the login button returns a clear "not
 configured" response instead of erroring).
+
+### Maps & location (optional)
+
+The Nearby-Hivers map and the Post-a-task address autocomplete use **Google Maps + Places**.
+Create `frontend/.env` (see [`frontend/.env.example`](./frontend/.env.example)) with a browser key:
+
+```
+VITE_GOOGLE_MAPS_KEY=your_browser_key
+```
+
+Provision it in the [Google Cloud Console](https://console.cloud.google.com/): enable **Maps
+JavaScript API** + **Places API**, create a browser key (restrict it to your origins), and enable
+billing (a school-demo stays within the free tier). Without the key, the map falls back to a free
+OpenStreetMap embed and the location field becomes a plain text input — the app still runs.
 
 ### Shared cloud database & real services
 

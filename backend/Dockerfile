@@ -1,12 +1,12 @@
 # Stage 1: Install dependencies only
-FROM python:3.12-slim AS deps
+FROM python:3.14-slim AS deps
 WORKDIR /app
 RUN pip install uv
 COPY pyproject.toml ./
 RUN uv sync --no-dev
 
 # Stage 2: Production image — minimal
-FROM python:3.12-slim AS production
+FROM python:3.14-slim AS production
 WORKDIR /app
 
 # Security: non-root user
