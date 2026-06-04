@@ -1,4 +1,5 @@
 from src.application.dtos.auth_dtos import LoginRequest, TokenResponse
+from src.domain.entities.user import Client, Hiver
 from src.domain.errors.domain_errors import InvalidCredentialsError
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository
 from src.shared.security import create_access_token, create_refresh_token
@@ -19,7 +20,7 @@ class LoginUseCase:
 
     async def execute(self, request: LoginRequest) -> TokenResponse:
         # Try client first, then hiver
-        user = await self._client_repo.find_by_email(request.email)
+        user: Client | Hiver | None = await self._client_repo.find_by_email(request.email)
         role = "client"
 
         if user is None:

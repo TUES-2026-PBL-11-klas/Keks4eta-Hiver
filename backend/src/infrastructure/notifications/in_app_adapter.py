@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.interfaces.ports import INotificationPort, NotificationPayload
+from src.domain.interfaces.ports import INotificationPort, NotificationPayload
 from src.infrastructure.database.models import NotificationLogModel
 
 

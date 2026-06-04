@@ -4,10 +4,10 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from domain.entities.task import VALID_VERTICALS, Task
-from domain.errors.domain_errors import InvalidVerticalError
-from domain.value_objects.location import Location
-from domain.value_objects.money import Money
+from src.domain.entities.task import VALID_VERTICALS, Task
+from src.domain.errors.domain_errors import InvalidVerticalError
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 
 
 @dataclass

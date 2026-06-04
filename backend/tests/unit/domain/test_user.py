@@ -1,11 +1,18 @@
+import sys
+from pathlib import Path
+
+_BACKEND = Path(__file__).resolve().parents[3]
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 import pytest
 
-from domain.entities.user import Client, Hiver, User
-from domain.errors.domain_errors import InsufficientRatingError, InvalidEmailError
-from domain.value_objects.location import Location
-from domain.value_objects.money import Money
-from domain.value_objects.rating import Rating
-from domain.value_objects.work_radius import WorkRadius
+from src.domain.entities.user import Client, Hiver, User
+from src.domain.errors.domain_errors import InsufficientRatingError, InvalidEmailError
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
+from src.domain.value_objects.rating import Rating
+from src.domain.value_objects.work_radius import WorkRadius
 
 
 def make_client(**overrides) -> Client:

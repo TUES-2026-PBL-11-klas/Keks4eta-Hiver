@@ -4,11 +4,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from domain.errors.domain_errors import (
+from src.domain.errors.domain_errors import (
     EscrowAlreadyReleasedError,
     TaskNotCompletedError,
 )
-from domain.value_objects.money import Money
+from src.domain.value_objects.money import Money
 
 
 class TransactionStatus(StrEnum):

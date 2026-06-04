@@ -61,11 +61,11 @@ class TestLoginUseCase:
 
     async def test_login_existing_hiver(self):
         repo_c, repo_h = FakeUserRepo(), FakeUserRepo()
-        pw = hash_password("pass")
+        pw = hash_password("password1")
         repo_h.saved.append(Hiver(id="h1", email="hiver@x.com", _password_hash=pw, full_name="H"))
 
         tokens = await LoginUseCase(repo_c, repo_h).execute(
-            LoginRequest(email="hiver@x.com", password="pass")
+            LoginRequest(email="hiver@x.com", password="password1")
         )
         assert decode_token(tokens.access_token)["role"] == "hiver"
 
@@ -91,7 +91,7 @@ class TestRegisterUseCase:
     async def test_register_client_creates_and_returns_tokens(self):
         repo_c, repo_h = FakeUserRepo(), FakeUserRepo()
         tokens = await RegisterUseCase(repo_c, repo_h).execute(
-            RegisterRequest(email="new@x.com", password="pass123", full_name="New", role="client")
+            RegisterRequest(email="new@x.com", password="password1", full_name="New", role="client")
         )
         assert len(repo_c.saved) == 1
         assert isinstance(repo_c.saved[0], Client)
@@ -100,7 +100,7 @@ class TestRegisterUseCase:
     async def test_register_hiver_creates_hiver(self):
         repo_c, repo_h = FakeUserRepo(), FakeUserRepo()
         await RegisterUseCase(repo_c, repo_h).execute(
-            RegisterRequest(email="h@x.com", password="pass123", full_name="Hiver", role="hiver")
+            RegisterRequest(email="h@x.com", password="password1", full_name="Hiver", role="hiver")
         )
         assert len(repo_h.saved) == 1
         assert isinstance(repo_h.saved[0], Hiver)
@@ -111,7 +111,7 @@ class TestRegisterUseCase:
 
         with pytest.raises(DuplicateEmailError):
             await RegisterUseCase(repo_c, repo_h).execute(
-                RegisterRequest(email="dup@x.com", password="pass", full_name="Y", role="client")
+                RegisterRequest(email="dup@x.com", password="password1", full_name="Y", role="client")
             )
 
     async def test_register_duplicate_in_hiver_table_raises(self):
@@ -120,7 +120,7 @@ class TestRegisterUseCase:
 
         with pytest.raises(DuplicateEmailError):
             await RegisterUseCase(repo_c, repo_h).execute(
-                RegisterRequest(email="dup@x.com", password="pass", full_name="Y", role="client")
+                RegisterRequest(email="dup@x.com", password="password1", full_name="Y", role="client")
             )
 
 

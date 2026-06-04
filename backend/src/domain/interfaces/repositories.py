@@ -4,16 +4,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TypeVar
 
-from domain.entities.boost import Boost
-from domain.entities.dispute import Dispute
-from domain.entities.message import Message
-from domain.entities.notification import Notification
-from domain.entities.offer import Offer
-from domain.entities.review import Review
-from domain.entities.task import Task
-from domain.entities.transaction import Transaction
-from domain.entities.user import Client, Hiver
-from domain.value_objects.location import Location
+from src.domain.entities.boost import Boost
+from src.domain.entities.dispute import Dispute
+from src.domain.entities.message import Message
+from src.domain.entities.notification import Notification
+from src.domain.entities.offer import Offer
+from src.domain.entities.review import Review
+from src.domain.entities.task import Task
+from src.domain.entities.transaction import Transaction
+from src.domain.entities.user import Client, Hiver
+from src.domain.value_objects.location import Location
 
 T = TypeVar("T")
 ID = TypeVar("ID", str, int)

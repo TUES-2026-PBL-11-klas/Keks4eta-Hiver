@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from domain.interfaces.ports import IPaymentPort
+from src.domain.interfaces.ports import IPaymentPort
 from src.infrastructure.payments.mock_payment_adapter import MockPaymentAdapter
 from src.shared.config import settings
 

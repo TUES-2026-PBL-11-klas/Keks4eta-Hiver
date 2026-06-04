@@ -294,6 +294,7 @@ class TestResolveDisputeUseCase:
     async def _setup(self):
         task = make_accepted_task()
         task.start("h-1")
+        task.open_dispute()
         txn = make_transaction()
         txn.dispute()
         dispute = Dispute(id="d-1", task_id="t-1", opened_by_id="c-1", reason="Problem")

@@ -277,21 +277,21 @@ class TestSubmitReviewUseCase:
     async def test_task_not_found_raises(self):
         with pytest.raises(TaskNotFoundError):
             await SubmitReviewUseCase(FakeTaskRepo(), FakeReviewRepo()).execute(
-                "nope", "c-1", SubmitReviewRequest(rating=5.0, comment="x")
+                "nope", "c-1", SubmitReviewRequest(rating=5.0, comment="Good")
             )
 
     async def test_task_not_completed_raises(self):
         task = make_task()  # only ACCEPTED
         with pytest.raises(TaskNotCompletedError):
             await SubmitReviewUseCase(FakeTaskRepo([task]), FakeReviewRepo()).execute(
-                "t-1", "c-1", SubmitReviewRequest(rating=5.0, comment="x")
+                "t-1", "c-1", SubmitReviewRequest(rating=5.0, comment="Good")
             )
 
     async def test_stranger_raises(self):
         task = make_completed_task()
         with pytest.raises(UnauthorizedActionError):
             await SubmitReviewUseCase(FakeTaskRepo([task]), FakeReviewRepo()).execute(
-                "t-1", "stranger", SubmitReviewRequest(rating=5.0, comment="x")
+                "t-1", "stranger", SubmitReviewRequest(rating=5.0, comment="Good")
             )
 
     async def test_duplicate_review_raises(self):

@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from domain.errors.domain_errors import UnauthorizedActionError
-from domain.value_objects.money import Money
+from src.domain.errors.domain_errors import UnauthorizedActionError
+from src.domain.value_objects.money import Money
 
 
 class OfferStatus(StrEnum):

@@ -1,11 +1,18 @@
+import sys
+from pathlib import Path
+
+_BACKEND = Path(__file__).resolve().parents[3]
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 import pytest
 
-from domain.entities.transaction import Transaction, TransactionStatus
-from domain.errors.domain_errors import (
+from src.domain.entities.transaction import Transaction, TransactionStatus
+from src.domain.errors.domain_errors import (
     EscrowAlreadyReleasedError,
     TaskNotCompletedError,
 )
-from domain.value_objects.money import Money
+from src.domain.value_objects.money import Money
 
 
 def make_escrow(price=Money.of(100)) -> Transaction:

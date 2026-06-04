@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from domain.interfaces.ports import IStoragePort
+from src.domain.interfaces.ports import IStoragePort
 
 
 class SupabaseStorageAdapter(IStoragePort):

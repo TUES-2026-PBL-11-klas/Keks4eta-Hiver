@@ -78,7 +78,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ValidationError, validation_error_handler)  # type: ignore[arg-type]
-app.add_exception_handler(Exception, unhandled_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(tasks.router, prefix=settings.api_prefix)

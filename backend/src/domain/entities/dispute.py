@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from domain.errors.domain_errors import DisputeAlreadyResolvedError
+from src.domain.errors.domain_errors import DisputeAlreadyResolvedError
 
 
 class DisputeStatus(StrEnum):

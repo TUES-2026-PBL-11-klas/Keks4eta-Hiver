@@ -5,13 +5,13 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from domain.errors.domain_errors import (
+from src.domain.errors.domain_errors import (
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
     UnauthorizedActionError,
 )
-from domain.value_objects.location import Location
-from domain.value_objects.money import Money
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 
 
 class TaskStatus(StrEnum):
@@ -53,7 +53,7 @@ class Task:
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
-        from domain.errors.domain_errors import InvalidVerticalError
+        from src.domain.errors.domain_errors import InvalidVerticalError
         if self.vertical not in VALID_VERTICALS:
             raise InvalidVerticalError(self.vertical)
 
