@@ -14,6 +14,7 @@ import type {
   TaskStatus,
   TaskSummary,
   TokenResponse,
+  UpdateMeBody,
   Vertical,
 } from "@/types";
 
@@ -96,6 +97,13 @@ export const userService = {
   }) => api.get<HiverSearchResult[]>(`/users/hivers/nearby${qs({ ...params })}`),
   setAvailability: (is_available_now: boolean) =>
     api.patch<HiverProfile>("/users/hivers/me/availability", { is_available_now }),
+  /** Edit own profile (partial). Returns the refreshed unified `Me`. */
+  updateMe: (body: UpdateMeBody) => api.patch<Me>("/users/me", body),
+  uploadAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<Me>("/users/me/avatar", fd);
+  },
 };
 
 export interface Boost {

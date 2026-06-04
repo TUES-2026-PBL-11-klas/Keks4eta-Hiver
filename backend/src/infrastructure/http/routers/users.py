@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, File, Query, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.dtos.boost_dtos import BoostResponse, BuyBoostRequest
 from src.application.dtos.review_dtos import ReviewResponse
@@ -8,6 +9,7 @@ from src.application.dtos.user_dtos import (
     HiverSearchResult,
     MeResponse,
     UpdateHiverAvailabilityRequest,
+    UpdateMeRequest,
 )
 from src.application.use_cases.boosts.boost_use_cases import (
     BuyBoostUseCase,
@@ -19,7 +21,17 @@ from src.application.use_cases.reviews.list_reviews_use_case import (
 from src.application.use_cases.users.find_hivers_nearby_use_case import (
     FindHiversNearbyUseCase,
 )
-from src.domain.errors.domain_errors import ClientNotFoundError, HiverNotFoundError
+from src.application.use_cases.users.update_profile_use_case import (
+    UpdateProfileUseCase,
+)
+from src.application.use_cases.users.upload_avatar_use_case import (
+    UploadAvatarUseCase,
+)
+from src.domain.errors.domain_errors import (
+    ClientNotFoundError,
+    HiverNotFoundError,
+    StorageNotConfiguredError,
+)
 from src.infrastructure.database.repositories.boost_repository import (
     PostgresBoostRepository,
 )
@@ -32,23 +44,24 @@ from src.infrastructure.database.repositories.user_repository import (
 )
 from src.infrastructure.http.dependencies import HiverDep, SessionDep, UserPayloadDep
 from src.infrastructure.payments.payment_factory import get_payment_port
+from src.infrastructure.storage.storage_factory import get_storage_port
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me", response_model=MeResponse)
-async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
-    """Return the currently authenticated user with BOTH facets.
+async def _build_me_response(session: AsyncSession, user_id: str) -> MeResponse:
+    """Assemble the unified /users/me view from both facets + stored location.
 
-    Unified accounts: every account is both client and hiver, so the response
-    carries the client stats and the hiver stats together.
+    Single source of truth shared by GET /me and the mutations (PATCH /me,
+    avatar upload) so every response shape stays identical after an edit.
     """
-    user_id = payload["sub"]
     client = await PostgresClientRepository(session).find_by_id(user_id)
-    hiver = await PostgresHiverRepository(session).find_by_id(user_id)
+    hiver_repo = PostgresHiverRepository(session)
+    hiver = await hiver_repo.find_by_id(user_id)
     base = client or hiver
     if base is None:
         raise ClientNotFoundError(user_id)
+    location = await hiver_repo.read_location(user_id) if hiver else None
 
     return MeResponse(
         id=base.id,
@@ -67,11 +80,56 @@ async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
         is_available_now=hiver.is_available_now if hiver else None,
         work_radius_km=hiver.work_radius.km if hiver else None,
         skills=hiver.skills if hiver else [],
+        latitude=location.latitude if location else None,
+        longitude=location.longitude if location else None,
+        location_display=location.display_address if location else None,
         # client facet
         rating_as_client=float(client.rating_as_client.value) if client else None,
         total_tasks=client.total_tasks if client else None,
         review_count=client.review_count if client else None,
     )
+
+
+@router.get("/me", response_model=MeResponse)
+async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
+    """Return the currently authenticated user with BOTH facets.
+
+    Unified accounts: every account is both client and hiver, so the response
+    carries the client stats and the hiver stats together.
+    """
+    return await _build_me_response(session, payload["sub"])
+
+
+@router.patch("/me", response_model=MeResponse)
+async def update_me(
+    body: UpdateMeRequest,
+    session: SessionDep,
+    payload: UserPayloadDep,
+) -> MeResponse:
+    """Edit the signed-in account's profile (name, contact, bio, skills,
+    service radius and location). Partial — omitted fields are left as-is."""
+    await UpdateProfileUseCase(hiver_repo=PostgresHiverRepository(session)).execute(
+        payload["sub"], body
+    )
+    return await _build_me_response(session, payload["sub"])
+
+
+@router.post("/me/avatar", response_model=MeResponse)
+async def upload_my_avatar(
+    session: SessionDep,
+    payload: UserPayloadDep,
+    file: UploadFile = File(...),
+) -> MeResponse:
+    """Upload a profile picture; the URL is stored on the shared user row."""
+    storage = get_storage_port()
+    if storage is None:
+        raise StorageNotConfiguredError()
+    data = await file.read()
+    await UploadAvatarUseCase(
+        hiver_repo=PostgresHiverRepository(session),
+        storage_port=storage,
+    ).execute(payload["sub"], data, file.content_type or "")
+    return await _build_me_response(session, payload["sub"])
 
 
 @router.get("/hivers/nearby", response_model=list[HiverSearchResult])
@@ -133,10 +191,12 @@ async def get_client_profile(
 
 @router.get("/hivers/{hiver_id}", response_model=HiverProfileResponse)
 async def get_hiver_profile(hiver_id: str, session: SessionDep) -> HiverProfileResponse:
-    hiver = await PostgresHiverRepository(session).find_by_id(hiver_id)
+    hiver_repo = PostgresHiverRepository(session)
+    hiver = await hiver_repo.find_by_id(hiver_id)
     if hiver is None:
         raise HiverNotFoundError(hiver_id)
     boost = await PostgresBoostRepository(session).find_active_for_hiver(hiver_id)
+    location = await hiver_repo.read_location(hiver_id)
     return HiverProfileResponse(
         user_id=hiver.id,
         full_name=hiver.full_name,
@@ -151,6 +211,9 @@ async def get_hiver_profile(hiver_id: str, session: SessionDep) -> HiverProfileR
         is_available_now=hiver.is_available_now,
         work_radius_km=hiver.work_radius.km,
         skills=hiver.skills,
+        latitude=location.latitude if location else None,
+        longitude=location.longitude if location else None,
+        location_display=location.display_address if location else None,
         is_boosted=boost is not None,
     )
 

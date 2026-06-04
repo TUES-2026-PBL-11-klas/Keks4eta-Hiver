@@ -1,8 +1,9 @@
-"""Unit tests for the image-integrity guard in UploadTaskImageUseCase.
+"""Unit tests for the shared image-integrity guard.
 
-Application code imports as `from src.application...`, so put `backend/` on
-sys.path (mirrors test_oauth_login_use_case) and provide the env vars
-`Settings()` needs (imported transitively).
+The decode check lives in `src.application.services.image_validation` and is
+reused by both the task-image and avatar uploads. Application code imports as
+`from src.application...`, so put `backend/` on sys.path (mirrors
+test_oauth_login_use_case) and provide the env vars `Settings()` needs.
 """
 import os
 import sys
@@ -22,10 +23,8 @@ os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_dummy")
 import pytest  # noqa: E402
 from PIL import Image  # noqa: E402
 
+from src.application.services.image_validation import _assert_decodable  # noqa: E402
 from src.domain.errors.domain_errors import BusinessRuleViolationError  # noqa: E402
-from src.application.use_cases.tasks.upload_task_image_use_case import (  # noqa: E402
-    UploadTaskImageUseCase,
-)
 
 
 def _valid_png() -> bytes:
@@ -36,14 +35,14 @@ def _valid_png() -> bytes:
 
 class TestImageIntegrityGuard:
     def test_valid_png_passes(self):
-        UploadTaskImageUseCase._assert_decodable(_valid_png())  # no raise
+        _assert_decodable(_valid_png())  # no raise
 
     def test_garbage_bytes_rejected(self):
         with pytest.raises(BusinessRuleViolationError) as exc:
-            UploadTaskImageUseCase._assert_decodable(b"this is not an image")
+            _assert_decodable(b"this is not an image")
         assert exc.value.code == "INVALID_IMAGE"
 
     def test_truncated_png_rejected(self):
         with pytest.raises(BusinessRuleViolationError) as exc:
-            UploadTaskImageUseCase._assert_decodable(_valid_png()[:20])
+            _assert_decodable(_valid_png()[:20])
         assert exc.value.code == "INVALID_IMAGE"

@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   HIVERS: "/hivers",
   PROFILE: "/profile",
+  SETTINGS: "/settings",
   HIVER_PROFILE: "/hivers/:id",
   CLIENT_PROFILE: "/clients/:id",
 } as const;

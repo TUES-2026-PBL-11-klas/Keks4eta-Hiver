@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
 import { boostService, userService, type Boost } from "@/lib/services";
 import { Avatar, Badge, Button, Card, Stars } from "@/components/ui";
-import { GridIcon, SearchIcon, LogOutIcon, ShieldIcon } from "@/components/icons";
+import { GridIcon, SearchIcon, LogOutIcon, ShieldIcon, SettingsIcon, PinIcon } from "@/components/icons";
 import s from "./Profile.module.css";
 
 /**
@@ -65,6 +65,11 @@ export default function Profile() {
             {user.level && <Badge tone="muted">{user.level}</Badge>}
             {user.is_oauth && <Badge tone="info">Social login</Badge>}
           </div>
+          <div style={{ marginTop: "var(--sp-3)" }}>
+            <Button size="sm" variant="secondary" onClick={() => navigate(ROUTES.SETTINGS)}>
+              <SettingsIcon size={16} /> Edit profile
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -88,6 +93,7 @@ export default function Profile() {
 
       <h2 className="section-title" style={{ margin: "var(--sp-8) 0 var(--sp-4)" }}>As a hiver</h2>
       <Card>
+        {user.bio && <p className={s.bio}>{user.bio}</p>}
         <div className={s.stats}>
           <div className={s.stat}>
             <span className={s.statValue}><Stars value={user.avg_rating ?? 0} size={16} /></span>
@@ -106,6 +112,12 @@ export default function Profile() {
           <div className={s.skills}>
             {user.skills.map((sk) => <Badge key={sk}>{sk}</Badge>)}
           </div>
+        )}
+        {user.location_display && (
+          <p className={s.location}>
+            <PinIcon size={15} /> {user.location_display}
+            {user.work_radius_km != null && <span> · {user.work_radius_km} km radius</span>}
+          </p>
         )}
       </Card>
 
@@ -157,6 +169,13 @@ export default function Profile() {
           <span className={s.tileText}>
             <strong>Browse tasks</strong>
             <span>Find work nearby</span>
+          </span>
+        </button>
+        <button className={s.tile} onClick={() => navigate(ROUTES.SETTINGS)}>
+          <span className={s.tileIcon}><SettingsIcon size={20} /></span>
+          <span className={s.tileText}>
+            <strong>Edit profile</strong>
+            <span>Photo, bio, skills & location</span>
           </span>
         </button>
         <div className={s.tile}>

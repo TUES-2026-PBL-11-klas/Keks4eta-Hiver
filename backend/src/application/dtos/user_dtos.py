@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from src.domain.value_objects.work_radius import ALLOWED_RADII_KM
 
 
 class ClientProfileResponse(BaseModel):
@@ -27,6 +29,9 @@ class HiverProfileResponse(BaseModel):
     is_available_now: bool
     work_radius_km: int
     skills: list[str] = []
+    latitude: float | None = None
+    longitude: float | None = None
+    location_display: str | None = None
     is_boosted: bool = False
 
     model_config = {"from_attributes": True}
@@ -55,6 +60,9 @@ class MeResponse(BaseModel):
     is_available_now: bool | None = None
     work_radius_km: int | None = None
     skills: list[str] = []
+    latitude: float | None = None
+    longitude: float | None = None
+    location_display: str | None = None
     # client-only
     rating_as_client: float | None = None
     total_tasks: int | None = None
@@ -63,6 +71,37 @@ class MeResponse(BaseModel):
 
 class UpdateHiverAvailabilityRequest(BaseModel):
     is_available_now: bool
+
+
+class UpdateMeRequest(BaseModel):
+    """Partial profile edit (PATCH /users/me).
+
+    Every field is optional with PATCH semantics: a field left ``None`` is not
+    touched. Strings can be cleared by sending an empty value (e.g. ``bio=""``);
+    skills can be cleared with ``[]``. Coordinates must arrive as a pair.
+    """
+
+    full_name: str | None = Field(default=None, min_length=1, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    bio: str | None = Field(default=None, max_length=1000)
+    skills: list[str] | None = None
+    work_radius_km: int | None = None
+    latitude: float | None = Field(default=None, ge=-90.0, le=90.0)
+    longitude: float | None = Field(default=None, ge=-180.0, le=180.0)
+    location_display: str | None = Field(default=None, max_length=255)
+
+    @field_validator("work_radius_km")
+    @classmethod
+    def _radius_in_allowed_tiers(cls, v: int | None) -> int | None:
+        if v is not None and v not in ALLOWED_RADII_KM:
+            raise ValueError(f"work_radius_km must be one of {ALLOWED_RADII_KM}")
+        return v
+
+    @model_validator(mode="after")
+    def _coords_come_as_pair(self) -> "UpdateMeRequest":
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude must be provided together")
+        return self
 
 
 class HiverSearchResult(BaseModel):

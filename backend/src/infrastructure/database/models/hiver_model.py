@@ -29,6 +29,7 @@ class HiverModel(Base):
     is_available_now: Mapped[bool] = mapped_column(Boolean, default=False)
     work_radius_km:   Mapped[int]  = mapped_column(Integer, default=5)
     location_point:   Mapped[object|None] = mapped_column(Geography(geometry_type="POINT", srid=4326))
+    location_display: Mapped[str|None]    = mapped_column(String(255))
     stripe_account_id: Mapped[str|None]   = mapped_column(String(100))
 
     user:   Mapped[UserModel]          = relationship("UserModel", back_populates="hiver")

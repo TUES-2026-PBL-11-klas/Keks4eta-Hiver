@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from geoalchemy2 import WKTElement
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.user import Client, Hiver
@@ -14,7 +15,12 @@ from src.domain.interfaces.repositories import (
 from src.domain.value_objects.location import Location
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
-from src.infrastructure.database.models import ClientModel, HiverModel, UserModel
+from src.infrastructure.database.models import (
+    ClientModel,
+    HiverModel,
+    SkillModel,
+    UserModel,
+)
 
 
 def _client_model_to_domain(u: UserModel, c: ClientModel) -> Client:
@@ -216,7 +222,7 @@ class PostgresHiverRepository(IHiverRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            new_hiver = HiverModel(
+            hiver = HiverModel(
                 user_id=user.id,
                 bio=entity.bio,
                 xp_points=entity.xp_points,
@@ -228,41 +234,112 @@ class PostgresHiverRepository(IHiverRepository):
                 work_radius_km=entity.work_radius.km,
             )
             self._session.add(user)
-            self._session.add(new_hiver)
+            self._session.add(hiver)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
             user.phone = entity.phone
             user.avatar_url = entity.avatar_url
             user.is_active = entity.is_active
-            hiver = await self._session.get(HiverModel, entity.id)
-            if hiver:
-                hiver.bio = entity.bio
-                hiver.xp_points = entity.xp_points
-                hiver.level = entity.level
-                hiver.avg_rating = entity.avg_rating.value
-                hiver.completed_tasks = entity.completed_tasks
-                hiver.is_available_now = entity.is_available_now
-                hiver.work_radius_km = entity.work_radius.km
+            existing = await self._session.get(HiverModel, entity.id)
+            if existing:
+                existing.bio = entity.bio
+                existing.xp_points = entity.xp_points
+                existing.level = entity.level
+                existing.avg_rating = entity.avg_rating.value
+                existing.completed_tasks = entity.completed_tasks
+                existing.is_available_now = entity.is_available_now
+                existing.work_radius_km = entity.work_radius.km
+                hiver = existing
             else:
                 # Unified accounts: the user row exists (created via the client
                 # facet) but has no hiver row yet — add it so this account can
                 # also offer on and do tasks.
-                self._session.add(
-                    HiverModel(
-                        user_id=entity.id,
-                        bio=entity.bio,
-                        xp_points=entity.xp_points,
-                        level=entity.level,
-                        avg_rating=entity.avg_rating.value,
-                        completed_tasks=entity.completed_tasks,
-                        review_count=entity.review_count,
-                        is_available_now=entity.is_available_now,
-                        work_radius_km=entity.work_radius.km,
-                    )
+                hiver = HiverModel(
+                    user_id=entity.id,
+                    bio=entity.bio,
+                    xp_points=entity.xp_points,
+                    level=entity.level,
+                    avg_rating=entity.avg_rating.value,
+                    completed_tasks=entity.completed_tasks,
+                    review_count=entity.review_count,
+                    is_available_now=entity.is_available_now,
+                    work_radius_km=entity.work_radius.km,
                 )
+                self._session.add(hiver)
+
+        # Persist the PostGIS service location + its display address. Only write
+        # when the caller actually carries a location, so unrelated saves (e.g.
+        # the availability toggle, which loads a hiver without coordinates) never
+        # wipe a previously stored point. POINT order is (longitude latitude);
+        # WKTElement avoids a shapely dependency.
+        if entity.location is not None:
+            hiver.location_point = WKTElement(
+                f"POINT({entity.location.longitude} {entity.location.latitude})",
+                srid=4326,
+            )
+            hiver.location_display = entity.location.display_address
+        await self._sync_skills(hiver, entity.skills)
         await self._session.flush()
         return entity
+
+    async def _sync_skills(self, hiver: HiverModel, names: list[str]) -> None:
+        """Reconcile the hiver_skills association to exactly ``names``.
+
+        Skill rows are shared and unique by name, so reuse existing rows and
+        create only the genuinely new ones. Idempotent: saving with the same
+        names the entity was loaded with leaves the association untouched.
+        """
+        wanted = list(dict.fromkeys(n.strip() for n in names if n.strip()))
+        if not wanted:
+            hiver.skills = []
+            return
+        existing = (
+            (
+                await self._session.execute(
+                    select(SkillModel).where(SkillModel.name.in_(wanted))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_name = {s.name: s for s in existing}
+        models: list[SkillModel] = []
+        for name in wanted:
+            skill = by_name.get(name)
+            if skill is None:
+                skill = SkillModel(name=name)
+                self._session.add(skill)
+                by_name[name] = skill
+            models.append(skill)
+        hiver.skills = models
+
+    async def read_location(self, user_id: str) -> Location | None:
+        """Read a hiver's stored service location (lat/lng + display address).
+
+        Kept off the hot ``find_by_id`` path (which runs on every authenticated
+        request); profile endpoints call this only when they render coordinates.
+        Uses raw ST_Y/ST_X to avoid geoalchemy2's broken geography typmod cast.
+        """
+        row = (
+            await self._session.execute(
+                text(
+                    """
+                    SELECT ST_Y(location_point::geometry) AS lat,
+                           ST_X(location_point::geometry) AS lng,
+                           location_display AS display
+                    FROM hivers
+                    WHERE user_id = :uid AND location_point IS NOT NULL
+                    """
+                ),
+                {"uid": user_id},
+            )
+        ).first()
+        if row is None:
+            return None
+        return Location(
+            latitude=row.lat, longitude=row.lng, display_address=row.display
+        )
 
     async def find_available_near(
         self, location: Location, radius_km: int, vertical: str | None = None

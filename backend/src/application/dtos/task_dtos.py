@@ -44,7 +44,7 @@ class CreateTaskRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def budget_range(self) -> "CreateTaskRequest":
+    def budget_range(self) -> CreateTaskRequest:
         if (
             self.budget_min is not None
             and self.budget_max is not None

@@ -26,6 +26,8 @@
 .statLabel { font-family: var(--font-mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-400); }
 
 .skills { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.bio { color: var(--ink-600); line-height: 1.55; margin-bottom: var(--sp-2); white-space: pre-wrap; }
+.location { display: flex; align-items: center; gap: 6px; color: var(--ink-400); font-size: 0.88rem; margin-top: var(--sp-3); }
 
 .tiles { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); margin: var(--sp-6) 0; }
 @media (min-width: 640px) { .tiles { grid-template-columns: repeat(2, 1fr); } }

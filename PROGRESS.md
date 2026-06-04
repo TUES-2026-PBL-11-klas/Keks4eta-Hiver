@@ -58,7 +58,8 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **GeoAlchemy2** | ≥0.15 | Maps PostGIS `Geography(POINT)` columns to SQLAlchemy ORM models | Geo ORM columns |
 | **Redis 7** | external | Fast in-memory store for sessions and rate limiting | Cache layer |
 | **python-jose** | ≥3.3 | Encodes and decodes JWT tokens | Auth token generation |
-| **passlib[bcrypt]** | ≥1.7 | Hashes passwords with bcrypt — never stores plain text | Password security |
+| **pwdlib[argon2,bcrypt]** | ≥0.2 | Hashes passwords with Argon2 (bcrypt fallback for legacy hashes) — never stores plain text | Password security |
+| **Pillow** | ≥10.3 | Decodes uploaded images to reject corrupt/truncated files (task photos + avatars) before storage | Image validation |
 | **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
 | **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
 | **Stripe** | ≥9.0 | Payment-intent adapter for escrow (optional) — escrow runs on a **mock** adapter by default; `payment_factory` selects which | Payments |
@@ -76,7 +77,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
 - PostGIS geospatial queries (`find_hivers_in_radius` stored function)
 - Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations (Supabase runs real Postgres, so the whole 001→019 chain applies normally)
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→020 chain applies normally)
 
 What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
 
@@ -204,7 +205,7 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 19 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 20 Alembic migrations that build the full schema from scratch in order.
 
 **SQLAlchemy Models (13 tables):**
 `users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
@@ -216,7 +217,7 @@ Endpoints are no longer gated by a role claim — any authenticated user can pos
 *and* offer/work — with the rule that you cannot offer on your own task
 (`CANNOT_OFFER_ON_OWN_TASK`). The `users.role` column is retained but vestigial.
 
-**The 19 Migrations:**
+**The 20 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -238,6 +239,7 @@ Endpoints are no longer gated by a role claim — any authenticated user can pos
 | 017 | enable_rls_and_secure_view | Enables Row Level Security (default-deny) on all 14 public tables; recreates `hiver_earnings_monthly` with `security_invoker = on` |
 | 018 | task_budget_range_check | `CHECK (budget_max IS NULL OR budget_min IS NULL OR budget_min <= budget_max)` on `tasks` — DB-level guard for the budget rule |
 | 019 | backfill_dual_role_profiles | Unified accounts: backfills the missing `clients`/`hivers` row for every user so each account has both facets |
+| 020 | hiver_location_display | Adds `location_display` to `hivers` — the human-readable address shown next to the PostGIS `location_point`, set from the profile Settings page |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -350,7 +352,7 @@ earnings past it.
 | POST | /auth/login | None | Get access + refresh tokens — **rate-limited 10/min/IP** |
 | POST | /tasks | Client JWT | Post a new task |
 | GET | /tasks | Client JWT | List my tasks (paginated) |
-| GET | /tasks/search | None | Public search — vertical / status / urgency / budget filters |
+| GET | /tasks/search | None | Public search — vertical / status / urgency / budget / free-text `q` / PostGIS `lat,lng,radius_km` / `sort` (carries lat,lng for map pins) |
 | GET | /tasks/{id} | None | Get task details |
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
 | POST | /tasks/{id}/complete | Client JWT | Mark task done |
@@ -374,8 +376,11 @@ earnings past it.
 | POST | /notifications/read-all | Auth | Mark all read |
 | GET | /users/{id}/reviews | None | All revealed reviews received by user |
 | GET | /users/clients/{id} | None | View client profile |
-| GET | /users/hivers/{id} | None | View hiver profile |
+| GET | /users/hivers/{id} | None | View hiver profile (incl. service location) |
 | GET | /users/hivers/nearby | None | PostGIS geo-search — `lat, lng, radius_km, vertical?` |
+| GET | /users/me | Auth | Current user — both facets + service location |
+| PATCH | /users/me | Auth | Edit own profile (name, phone, bio, skills, radius, lat/lng + display) — partial |
+| POST | /users/me/avatar | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
 | POST | /users/hivers/me/boost | Hiver JWT | Buy a visibility boost (mock-charged) |
 | GET | /users/hivers/me/boost | Hiver JWT | My active boost, if any |
@@ -540,7 +545,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–019 Alembic migrations
+│           │   ├── migrations/versions/  001–020 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

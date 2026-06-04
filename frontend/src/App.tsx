@@ -14,6 +14,7 @@ import PostTask from "@/pages/PostTask";
 import Dashboard from "@/pages/Dashboard";
 import NearbyHivers from "@/pages/NearbyHivers";
 import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
 import PublicProfile from "@/pages/PublicProfile";
 
 function Animated({ children }: { children: React.ReactNode }) {
@@ -67,6 +68,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Animated><Profile /></Animated>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.SETTINGS}
+            element={
+              <ProtectedRoute>
+                <Animated><Settings /></Animated>
               </ProtectedRoute>
             }
           />

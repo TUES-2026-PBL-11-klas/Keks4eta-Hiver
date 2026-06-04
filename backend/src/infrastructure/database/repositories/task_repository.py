@@ -155,20 +155,26 @@ class PostgresTaskRepository(ITaskRepository):
         # SRID-0 → 4326 cast that find_nearby relies on). geoalchemy2's typed
         # cast renders an invalid `geography(GEOMETRY,-1)` typmod, so avoid it.
         geo_active = lat is not None and lng is not None and radius_km is not None
+        geo_clause = None
         if geo_active:
+            # Narrow for the type checker — geo_active already guarantees these.
+            assert lat is not None and lng is not None and radius_km is not None
             filters.append(TaskModel.location_point.isnot(None))
-            filters.append(
-                text(
-                    "ST_DWithin(location_point, "
-                    "ST_MakePoint(:geo_lng, :geo_lat)::geography, :geo_radius_m)"
-                ).bindparams(geo_lng=lng, geo_lat=lat, geo_radius_m=radius_km * 1000)
-            )
+            geo_clause = text(
+                "ST_DWithin(location_point, "
+                "ST_MakePoint(:geo_lng, :geo_lat)::geography, :geo_radius_m)"
+            ).bindparams(geo_lng=lng, geo_lat=lat, geo_radius_m=radius_km * 1000)
 
         count_q = select(func.count()).select_from(TaskModel)
         list_q = select(TaskModel)
         for f in filters:
             count_q = count_q.where(f)
             list_q = list_q.where(f)
+        # The PostGIS predicate is a raw TextClause, applied apart from the ORM
+        # column filters so the `filters` list stays uniformly typed.
+        if geo_clause is not None:
+            count_q = count_q.where(geo_clause)
+            list_q = list_q.where(geo_clause)
 
         if sort == "budget":
             list_q = list_q.order_by(TaskModel.budget_max.desc().nullslast())

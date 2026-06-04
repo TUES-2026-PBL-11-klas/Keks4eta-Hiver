@@ -41,10 +41,25 @@ export interface Me {
   is_available_now?: boolean | null;
   work_radius_km?: number | null;
   skills?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
   // client-only
   rating_as_client?: number | null;
   total_tasks?: number | null;
   review_count?: number | null;
+}
+
+/** Partial profile edit (PATCH /users/me). Omitted fields stay unchanged. */
+export interface UpdateMeBody {
+  full_name?: string;
+  phone?: string;
+  bio?: string;
+  skills?: string[];
+  work_radius_km?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
 }
 
 // ── Tasks ───────────────────────────────────────────────────────────────────
@@ -153,6 +168,9 @@ export interface HiverProfile {
   is_available_now: boolean;
   work_radius_km: number;
   skills: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
   is_boosted?: boolean;
 }
 

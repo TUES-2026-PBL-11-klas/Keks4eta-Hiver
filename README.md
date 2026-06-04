@@ -15,7 +15,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅ | — |
+| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅ | — |
 | 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
 
 ## Tech Stack (short)
@@ -25,12 +25,12 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (19 chained) |
+| Migrations | Alembic (20 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
-| Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
+| Auth | JWT (python-jose) + pwdlib (Argon2, bcrypt fallback); social login via Authlib (Google + Facebook) |
 | Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
-| Storage | Supabase Storage (task images); Pillow validates image integrity before upload |
+| Storage | Supabase Storage (task images + profile avatars); Pillow validates image integrity before upload |
 | Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — task pins on Find-tasks & hiver pins on Nearby Hivers, address autocomplete on Post-a-task; keyless OSM fallback |
 | Frontend | React 19 + TypeScript 5 + Vite 8 + Framer Motion (responsive web app) |
 | Container | Docker (multi-stage) + docker-compose |
@@ -48,7 +48,7 @@ hiver/
 │   ├── src/
 │   │   ├── domain/            entities, value objects, errors, interfaces
 │   │   ├── application/       use cases + DTOs
-│   │   ├── infrastructure/    database (models, migrations 001–017, seed.py), http, payments, storage adapters
+│   │   ├── infrastructure/    database (models, migrations 001–020, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
 │   ├── tests/                 unit (domain) + use-case tests
@@ -157,7 +157,9 @@ npm run dev                     # http://localhost:5173
 | POST   | `/auth/refresh` | – | Exchange refresh token for a fresh token pair |
 | GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (role param accepted but ignored) |
 | GET    | `/auth/oauth/{provider}/callback` | – | Provider redirect → issues JWT, redirects to SPA |
-| GET    | `/users/me` | Auth | Current authenticated user — both client + hiver facets |
+| GET    | `/users/me` | Auth | Current authenticated user — both client + hiver facets (incl. service location) |
+| PATCH  | `/users/me` | Auth | Edit own profile (full_name, phone, bio, skills, work_radius_km, lat/lng + display) — partial |
+| POST   | `/users/me/avatar` | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | POST   | `/tasks` | Client | Post a task |
 | GET    | `/tasks` | Client | List my tasks (paginated) |
 | GET    | `/tasks/search` | – | Public search: `vertical, status, is_urgent, min_budget, max_budget, q` (free-text), `lat/lng/radius_km` (PostGIS), `sort=recent\|distance\|budget` — results carry `latitude/longitude` for map pins |
@@ -208,5 +210,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 19 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
+| **БД** (Databases) | 20 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |
