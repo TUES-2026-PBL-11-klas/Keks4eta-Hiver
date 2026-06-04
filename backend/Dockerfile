@@ -6,8 +6,8 @@ WORKDIR /app
 RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev binutils
 
 RUN pip install --no-cache-dir uv
-COPY pyproject.toml uv.lock ./
-RUN uv sync --no-dev --frozen && \
+COPY pyproject.toml ./
+RUN uv sync --no-dev && \
     find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -name "*.so" -exec strip --strip-debug {} + 2>/dev/null || true
 
