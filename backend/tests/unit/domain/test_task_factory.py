@@ -1,10 +1,7 @@
 import pytest
 
-from domain.errors.domain_errors import (
-    InvalidVerticalError,
-    MissingSmartAnswerError,
-)
-from domain.services.task_factory import TaskCreateData, TaskFactory
+from src.domain.errors.domain_errors import InvalidVerticalError
+from src.domain.services.task_factory import TaskCreateData, TaskFactory
 
 
 def make_data(**overrides) -> TaskCreateData:
@@ -20,31 +17,26 @@ def make_data(**overrides) -> TaskCreateData:
     return TaskCreateData(**defaults)
 
 
-class TestSmartAnswerValidation:
-    """The missing-smart-answer case is exactly what used to 500 on POST /tasks."""
-
+class TestTaskFactory:
     @pytest.mark.parametrize(
         "vertical,field",
         [("home", "property_type"), ("learn", "subject"), ("tech", "device_type")],
     )
-    def test_missing_required_answer_rejected(self, vertical, field):
-        with pytest.raises(MissingSmartAnswerError):
-            TaskFactory.create(make_data(vertical=vertical, smart_answers={}))
-
-    @pytest.mark.parametrize(
-        "vertical,field",
-        [("home", "property_type"), ("learn", "subject"), ("tech", "device_type")],
-    )
-    def test_with_required_answer_succeeds(self, vertical, field):
+    def test_smart_answers_stored_when_provided(self, vertical, field):
         task = TaskFactory.create(
             make_data(vertical=vertical, smart_answers={field: "x"})
         )
         assert task.vertical == vertical
         assert task.smart_answers[field] == "x"
 
-    def test_generic_vertical_needs_no_smart_answers(self):
-        task = TaskFactory.create(make_data(vertical="care", smart_answers={}))
-        assert task.vertical == "care"
+    @pytest.mark.parametrize(
+        "vertical", ["home", "learn", "tech", "care", "move", "events"]
+    )
+    def test_smart_answers_optional(self, vertical):
+        # Unified direction: smart_answers are optional — missing keys no longer
+        # 500 or raise; the frontend collects them so tasks stay rich.
+        task = TaskFactory.create(make_data(vertical=vertical, smart_answers={}))
+        assert task.vertical == vertical
 
     def test_unknown_vertical_rejected(self):
         with pytest.raises(InvalidVerticalError):

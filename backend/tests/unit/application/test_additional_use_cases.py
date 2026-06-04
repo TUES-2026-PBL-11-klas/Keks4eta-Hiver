@@ -40,6 +40,17 @@ from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
 
 
+def _valid_image_bytes() -> bytes:
+    """A real, decodable PNG — the upload use case now validates image integrity."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new("RGB", (4, 4), (238, 127, 34)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
 
@@ -290,7 +301,7 @@ class TestUploadTaskImageUseCase:
     async def test_uploads_image_and_returns_task(self):
         task = make_task()
         result = await self._make_use_case(task).execute(
-            "t-1", "c-1", b"fake-image-data", "image/png"
+            "t-1", "c-1", _valid_image_bytes(), "image/png"
         )
         assert result.id == "t-1"
         assert len(task.image_urls) == 1
@@ -299,6 +310,6 @@ class TestUploadTaskImageUseCase:
     async def test_webp_content_type_accepted(self):
         task = make_task()
         result = await self._make_use_case(task).execute(
-            "t-1", "c-1", b"fake-image", "image/webp"
+            "t-1", "c-1", _valid_image_bytes(), "image/webp"
         )
         assert result.id == "t-1"
