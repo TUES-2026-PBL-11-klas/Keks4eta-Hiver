@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from domain.entities.task import Task, VALID_VERTICALS
-from domain.value_objects.money import Money
-from domain.value_objects.location import Location
-from domain.errors.domain_errors import InvalidVerticalError, MissingSmartAnswerError
+from src.domain.entities.task import VALID_VERTICALS, Task
+from src.domain.errors.domain_errors import InvalidVerticalError
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 
 
 @dataclass
@@ -17,7 +18,7 @@ class TaskCreateData:
     subcategory: str
     title: str
     description: str
-    smart_answers: dict
+    smart_answers: dict[str, Any]
     is_urgent: bool = False
     budget_min: float | None = None
     budget_max: float | None = None
@@ -27,7 +28,7 @@ class TaskCreateData:
     image_urls: list[str] | None = None
 
 
-class TaskBuilder(ABC if False else object):
+class TaskBuilder:
     """Abstract base for vertical-specific task builders."""
 
     def __init__(self, data: TaskCreateData) -> None:
@@ -59,28 +60,15 @@ class TaskBuilder(ABC if False else object):
 
 
 class HomeTaskBuilder(TaskBuilder):
-    """Validates home-specific smart_answers: property_type, size_sqm."""
-
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "property_type" not in answers:
-            raise MissingSmartAnswerError(self.data.vertical, "property_type")
+    """Home tasks — accepts optional smart_answers: property_type, size_sqm."""
 
 
 class LearnTaskBuilder(TaskBuilder):
-    """Validates learn-specific smart_answers: subject, student_age."""
-
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "subject" not in answers:
-            raise MissingSmartAnswerError(self.data.vertical, "subject")
+    """Learn tasks — accepts optional smart_answers: subject, student_age."""
 
 
 class TechTaskBuilder(TaskBuilder):
-    def _validate(self) -> None:
-        answers = self.data.smart_answers
-        if "device_type" not in answers:
-            raise MissingSmartAnswerError(self.data.vertical, "device_type")
+    """Tech tasks — accepts optional smart_answers: device_type."""
 
 
 class GenericTaskBuilder(TaskBuilder):

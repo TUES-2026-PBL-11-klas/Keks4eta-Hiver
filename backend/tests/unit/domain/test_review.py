@@ -1,8 +1,15 @@
+import sys
+from pathlib import Path
+
+_BACKEND = Path(__file__).resolve().parents[3]
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 import pytest
 
-from domain.entities.review import Review, ReviewPair
-from domain.errors.domain_errors import ReviewAlreadySubmittedError
-from domain.value_objects.rating import Rating
+from src.domain.entities.review import Review, ReviewPair
+from src.domain.errors.domain_errors import ReviewAlreadySubmittedError
+from src.domain.value_objects.rating import Rating
 
 
 def review_from(reviewer: str, reviewee: str) -> Review:

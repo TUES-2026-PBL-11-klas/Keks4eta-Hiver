@@ -1,6 +1,6 @@
+from src.application.dtos.task_dtos import TaskDetailResponse
 from src.domain.errors.domain_errors import TaskNotFoundError
 from src.domain.interfaces.repositories import ITaskRepository
-from src.application.dtos.task_dtos import TaskDetailResponse
 
 
 class GetTaskUseCase:

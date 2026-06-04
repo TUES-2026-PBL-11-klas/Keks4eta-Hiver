@@ -1,5 +1,5 @@
-from src.domain.interfaces.repositories import ITaskRepository, PaginatedResult
 from src.application.dtos.task_dtos import TaskSummaryResponse
+from src.domain.interfaces.repositories import ITaskRepository, PaginatedResult
 
 
 class SearchTasksUseCase:

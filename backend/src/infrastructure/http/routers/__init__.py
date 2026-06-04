@@ -1,3 +1,3 @@
-from src.infrastructure.http.routers import auth, tasks, offers, users, payments
+from src.infrastructure.http.routers import auth, offers, payments, tasks, users
 
 __all__ = ["auth", "tasks", "offers", "users", "payments"]

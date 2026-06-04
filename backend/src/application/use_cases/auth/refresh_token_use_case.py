@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from src.application.dtos.auth_dtos import TokenResponse
+from src.domain.entities.user import Client, Hiver
 from src.domain.errors.domain_errors import InvalidTokenError
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository
-from src.application.dtos.auth_dtos import TokenResponse
 from src.shared.security import (
     create_access_token,
     create_refresh_token,
@@ -37,7 +38,7 @@ class RefreshTokenUseCase:
             raise InvalidTokenError()
 
         role = "client"
-        user = await self._client_repo.find_by_id(user_id)
+        user: Client | Hiver | None = await self._client_repo.find_by_id(user_id)
         if user is None:
             user = await self._hiver_repo.find_by_id(user_id)
             role = "hiver"

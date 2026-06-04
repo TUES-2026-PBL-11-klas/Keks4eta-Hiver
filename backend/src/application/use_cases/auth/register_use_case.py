@@ -1,16 +1,15 @@
 from __future__ import annotations
-import uuid
-from passlib.context import CryptContext
 
+import uuid
+
+from src.application.dtos.auth_dtos import RegisterRequest, TokenResponse
 from src.domain.entities.user import Client, Hiver
-from src.domain.value_objects.rating import Rating
-from src.domain.value_objects.work_radius import WorkRadius
 from src.domain.errors.domain_errors import DuplicateEmailError
 from src.domain.interfaces.repositories import IClientRepository, IHiverRepository
-from src.application.dtos.auth_dtos import RegisterRequest, TokenResponse
+from src.domain.value_objects.rating import Rating
+from src.domain.value_objects.work_radius import WorkRadius
+from src.shared.password import hash_password
 from src.shared.security import create_access_token, create_refresh_token
-
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class RegisterUseCase:
@@ -34,7 +33,7 @@ class RegisterUseCase:
             raise DuplicateEmailError(request.email)
 
         user_id = str(uuid.uuid4())
-        password_hash = pwd.hash(request.password)
+        password_hash = hash_password(request.password)
 
         # Unified accounts: every new account gets BOTH a client and a hiver
         # profile sharing one users row, so it can immediately post tasks and

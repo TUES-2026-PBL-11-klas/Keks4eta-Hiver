@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
-from domain.errors.domain_errors import DisputeAlreadyResolvedError
+from src.domain.errors.domain_errors import DisputeAlreadyResolvedError
 
 
-class DisputeStatus(str, Enum):
+class DisputeStatus(StrEnum):
     OPEN = "open"          # raised, escrow locked, awaiting resolution
     RESOLVED = "resolved"  # settled in the hiver's favour → escrow released
     REFUNDED = "refunded"  # settled in the client's favour → escrow refunded

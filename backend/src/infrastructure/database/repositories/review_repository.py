@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.review import Review
-from src.domain.value_objects.rating import Rating
 from src.domain.interfaces.repositories import IReviewRepository
+from src.domain.value_objects.rating import Rating
 from src.infrastructure.database.models import ReviewModel
 
 

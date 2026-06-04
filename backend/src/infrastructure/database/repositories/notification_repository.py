@@ -1,5 +1,9 @@
 from __future__ import annotations
-from sqlalchemy import select, update, func
+
+from typing import cast
+
+from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.notification import Notification
@@ -45,25 +49,25 @@ class PostgresNotificationRepository(INotificationRepository):
         return int(result.scalar() or 0)
 
     async def mark_read(self, notification_id: str, user_id: str) -> bool:
-        result = await self._session.execute(
+        result = cast(CursorResult[None], await self._session.execute(
             update(NotificationLogModel)
             .where(
                 NotificationLogModel.id == notification_id,
                 NotificationLogModel.user_id == user_id,
             )
             .values(is_read=True)
-        )
+        ))
         await self._session.flush()
         return result.rowcount > 0
 
     async def mark_all_read(self, user_id: str) -> int:
-        result = await self._session.execute(
+        result = cast(CursorResult[None], await self._session.execute(
             update(NotificationLogModel)
             .where(
                 NotificationLogModel.user_id == user_id,
                 NotificationLogModel.is_read.is_(False),
             )
             .values(is_read=True)
-        )
+        ))
         await self._session.flush()
         return result.rowcount

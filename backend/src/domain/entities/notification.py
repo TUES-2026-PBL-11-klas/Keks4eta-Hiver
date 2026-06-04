@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -13,6 +15,6 @@ class Notification:
     user_id: str
     title: str
     body: str
-    data: dict = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     is_read: bool = False
     sent_at: datetime = field(default_factory=datetime.utcnow)

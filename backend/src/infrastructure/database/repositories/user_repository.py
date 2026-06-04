@@ -1,17 +1,20 @@
 from __future__ import annotations
+
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
-from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.user import Client, Hiver
+from src.domain.interfaces.repositories import (
+    IClientRepository,
+    IHiverRepository,
+    PaginatedResult,
+)
 from src.domain.value_objects.location import Location
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
-from src.domain.interfaces.repositories import IClientRepository, IHiverRepository, PaginatedResult
-from src.infrastructure.database.models import UserModel, ClientModel, HiverModel
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from src.infrastructure.database.models import ClientModel, HiverModel, UserModel
 
 
 def _client_model_to_domain(u: UserModel, c: ClientModel) -> Client:
@@ -106,14 +109,14 @@ class PostgresClientRepository(IClientRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            client = ClientModel(
+            new_client = ClientModel(
                 user_id=user.id,
                 rating_as_client=entity.rating_as_client.value,
                 total_tasks=entity.total_tasks,
                 review_count=entity.review_count,
             )
             self._session.add(user)
-            self._session.add(client)
+            self._session.add(new_client)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
@@ -140,7 +143,9 @@ class PostgresClientRepository(IClientRepository):
         await self._session.flush()
         return entity
 
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Client]:
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Client]:
         result = await self._session.execute(
             select(UserModel, ClientModel)
             .join(ClientModel, UserModel.id == ClientModel.user_id)
@@ -149,7 +154,9 @@ class PostgresClientRepository(IClientRepository):
         )
         rows = result.all()
         items = [_client_model_to_domain(r.UserModel, r.ClientModel) for r in rows]
-        return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
+        return PaginatedResult(
+            items=items, total=len(items), page=page, page_size=page_size
+        )
 
     async def delete(self, entity_id: str) -> None:
         user = await self._session.get(UserModel, entity_id)
@@ -209,7 +216,7 @@ class PostgresHiverRepository(IHiverRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            hiver = HiverModel(
+            new_hiver = HiverModel(
                 user_id=user.id,
                 bio=entity.bio,
                 xp_points=entity.xp_points,
@@ -221,7 +228,7 @@ class PostgresHiverRepository(IHiverRepository):
                 work_radius_km=entity.work_radius.km,
             )
             self._session.add(user)
-            self._session.add(hiver)
+            self._session.add(new_hiver)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
@@ -257,13 +264,22 @@ class PostgresHiverRepository(IHiverRepository):
         await self._session.flush()
         return entity
 
-    async def find_available_near(self, location, radius_km, vertical=None) -> list[Hiver]:
+    async def find_available_near(
+        self, location: Location, radius_km: int, vertical: str | None = None
+    ) -> list[Hiver]:
         # Uses the PL/pgSQL function from migration 014
         from sqlalchemy import text
+
         result = await self._session.execute(
-            text("SELECT user_id FROM find_hivers_in_radius(:lat, :lng, :radius, :vertical)"),
-            {"lat": location.latitude, "lng": location.longitude,
-             "radius": radius_km, "vertical": vertical},
+            text(
+                "SELECT user_id FROM find_hivers_in_radius(:lat, :lng, :radius, :vertical)"
+            ),
+            {
+                "lat": location.latitude,
+                "lng": location.longitude,
+                "radius": radius_km,
+                "vertical": vertical,
+            },
         )
         ids = [row.user_id for row in result]
         if not ids:
@@ -294,7 +310,9 @@ class PostgresHiverRepository(IHiverRepository):
                 hivers.append(h)
         return hivers
 
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Hiver]:
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Hiver]:
         result = await self._session.execute(
             select(UserModel, HiverModel)
             .join(HiverModel, UserModel.id == HiverModel.user_id)
@@ -303,7 +321,9 @@ class PostgresHiverRepository(IHiverRepository):
         )
         rows = result.all()
         items = [_hiver_model_to_domain(r.UserModel, r.HiverModel) for r in rows]
-        return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
+        return PaginatedResult(
+            items=items, total=len(items), page=page, page_size=page_size
+        )
 
     async def delete(self, entity_id: str) -> None:
         user = await self._session.get(UserModel, entity_id)

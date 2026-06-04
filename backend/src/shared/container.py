@@ -8,25 +8,30 @@ per-request, which gives us automatic scoping without a DI framework.
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.use_cases.auth.login_use_case import LoginUseCase
+from src.application.use_cases.auth.register_use_case import RegisterUseCase
+from src.application.use_cases.offers.accept_offer_use_case import AcceptOfferUseCase
+from src.application.use_cases.offers.create_offer_use_case import CreateOfferUseCase
+from src.application.use_cases.payments.release_escrow_use_case import (
+    ReleaseEscrowUseCase,
+)
+from src.application.use_cases.tasks.create_task_use_case import CreateTaskUseCase
+from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
+from src.application.use_cases.tasks.list_tasks_use_case import ListClientTasksUseCase
+from src.infrastructure.database.repositories.offer_repository import (
+    PostgresOfferRepository,
+)
+from src.infrastructure.database.repositories.task_repository import (
+    PostgresTaskRepository,
+)
+from src.infrastructure.database.repositories.transaction_repository import (
+    PostgresTransactionRepository,
+)
 from src.infrastructure.database.repositories.user_repository import (
     PostgresClientRepository,
     PostgresHiverRepository,
 )
-from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
-from src.infrastructure.database.repositories.offer_repository import PostgresOfferRepository
-from src.infrastructure.database.repositories.transaction_repository import (
-    PostgresTransactionRepository,
-)
 from src.infrastructure.payments.payment_factory import get_payment_port
-
-from src.application.use_cases.auth.register_use_case import RegisterUseCase
-from src.application.use_cases.auth.login_use_case import LoginUseCase
-from src.application.use_cases.tasks.create_task_use_case import CreateTaskUseCase
-from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
-from src.application.use_cases.tasks.list_tasks_use_case import ListClientTasksUseCase
-from src.application.use_cases.offers.create_offer_use_case import CreateOfferUseCase
-from src.application.use_cases.offers.accept_offer_use_case import AcceptOfferUseCase
-from src.application.use_cases.payments.release_escrow_use_case import ReleaseEscrowUseCase
 
 
 def make_register_use_case(session: AsyncSession) -> RegisterUseCase:

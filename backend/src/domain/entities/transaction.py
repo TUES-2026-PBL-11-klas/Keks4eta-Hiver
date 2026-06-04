@@ -1,13 +1,17 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
-from domain.value_objects.money import Money
-from domain.errors.domain_errors import EscrowAlreadyReleasedError, TaskNotCompletedError
+from src.domain.errors.domain_errors import (
+    EscrowAlreadyReleasedError,
+    TaskNotCompletedError,
+)
+from src.domain.value_objects.money import Money
 
 
-class TransactionStatus(str, Enum):
+class TransactionStatus(StrEnum):
     HELD = "held"          # escrow: funds captured, not yet released
     RELEASED = "released"  # hiver received payout
     REFUNDED = "refunded"  # client refunded (cancellation)
@@ -74,7 +78,7 @@ class Transaction:
         hiver_id: str,
         offer_price: Money,
         stripe_payment_intent_id: str,
-    ) -> "Transaction":
+    ) -> Transaction:
         """Factory method: compute fees and build Transaction in one call."""
         platform_fee = offer_price * 0.10
         hiver_payout = offer_price - platform_fee

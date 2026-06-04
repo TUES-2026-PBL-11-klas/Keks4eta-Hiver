@@ -1,8 +1,9 @@
 from __future__ import annotations
-from pydantic import BaseModel, field_validator, model_validator
-from typing import Literal
-from datetime import datetime
 
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, field_validator, model_validator
 
 VALID_VERTICALS = {"home", "learn", "tech", "care", "move", "events"}
 
@@ -12,7 +13,7 @@ class CreateTaskRequest(BaseModel):
     subcategory: str
     title: str
     description: str
-    smart_answers: dict = {}
+    smart_answers: dict[str, Any] = {}
     is_urgent: bool = False
     budget_min: float | None = None
     budget_max: float | None = None
@@ -75,7 +76,7 @@ class TaskDetailResponse(TaskSummaryResponse):
     description: str
     client_id: str
     hiver_id: str | None
-    smart_answers: dict
+    smart_answers: dict[str, Any]
     image_urls: list[str]
     expires_at: datetime | None
     updated_at: datetime

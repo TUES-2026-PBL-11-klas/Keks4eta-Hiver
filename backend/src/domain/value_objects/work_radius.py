@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
+from dataclasses import dataclass
 
 ALLOWED_RADII_KM = (1, 2, 5, 10, 15, 20)
 
@@ -21,11 +21,11 @@ class WorkRadius:
             )
 
     @classmethod
-    def default(cls) -> "WorkRadius":
+    def default(cls) -> WorkRadius:
         return cls(5)
 
     @classmethod
-    def maximum(cls) -> "WorkRadius":
+    def maximum(cls) -> WorkRadius:
         return cls(20)
 
     def covers(self, distance_km: float) -> bool:

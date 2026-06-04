@@ -1,6 +1,9 @@
 from __future__ import annotations
-from domain.interfaces.ports import IPaymentPort
-from domain.value_objects.money import Money
+
+from typing import Any
+
+from src.domain.interfaces.ports import IPaymentPort
+from src.domain.value_objects.money import Money
 
 
 class StripeAdapter(IPaymentPort):
@@ -12,7 +15,7 @@ class StripeAdapter(IPaymentPort):
     OOP: Encapsulates all Stripe-specific details (cents conversion, API calls).
     """
 
-    def __init__(self, stripe_client) -> None:
+    def __init__(self, stripe_client: Any) -> None:
         self._stripe = stripe_client
 
     async def hold_payment(self, amount: Money, customer_id: str) -> str:
@@ -23,7 +26,7 @@ class StripeAdapter(IPaymentPort):
             customer=customer_id,
             capture_method="manual",  # hold without capturing = simulated escrow
         )
-        return intent.id
+        return str(intent.id)
 
     async def release_payment(self, payment_intent_id: str) -> None:
         """Capture the held PaymentIntent — money moves to connected account."""
@@ -38,4 +41,4 @@ class StripeAdapter(IPaymentPort):
 
     async def create_customer(self, email: str, name: str) -> str:
         customer = await self._stripe.customers.create_async(email=email, name=name)
-        return customer.id
+        return str(customer.id)

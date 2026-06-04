@@ -1,15 +1,17 @@
 from fastapi import APIRouter
 
-from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep, EventBusDep
-from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
+from src.application.dtos.message_dtos import MessageResponse, SendMessageRequest
+from src.application.use_cases.messages.message_use_cases import (
+    ListMessagesUseCase,
+    SendMessageUseCase,
+)
 from src.infrastructure.database.repositories.message_repository import (
     PostgresMessageRepository,
 )
-from src.application.use_cases.messages.message_use_cases import (
-    SendMessageUseCase,
-    ListMessagesUseCase,
+from src.infrastructure.database.repositories.task_repository import (
+    PostgresTaskRepository,
 )
-from src.application.dtos.message_dtos import SendMessageRequest, MessageResponse
+from src.infrastructure.http.dependencies import EventBusDep, SessionDep, UserPayloadDep
 
 router = APIRouter(tags=["messages"])
 

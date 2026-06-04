@@ -1,6 +1,10 @@
 from __future__ import annotations
+
 import uuid
+from typing import cast
+
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.message import Message
@@ -44,7 +48,7 @@ class PostgresMessageRepository(IMessageRepository):
         return [_to_domain(m) for m in result.scalars()]
 
     async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
-        result = await self._session.execute(
+        result = cast(CursorResult[None], await self._session.execute(
             update(MessageModel)
             .where(
                 MessageModel.task_id == task_id,
@@ -52,6 +56,6 @@ class PostgresMessageRepository(IMessageRepository):
                 MessageModel.is_read.is_(False),
             )
             .values(is_read=True)
-        )
+        ))
         await self._session.flush()
         return result.rowcount

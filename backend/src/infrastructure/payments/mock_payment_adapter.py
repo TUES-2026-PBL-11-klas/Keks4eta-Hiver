@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import uuid
 
-from domain.interfaces.ports import IPaymentPort
-from domain.value_objects.money import Money
+from src.domain.interfaces.ports import IPaymentPort
+from src.domain.value_objects.money import Money
 
 
 class MockPaymentAdapter(IPaymentPort):

@@ -1,11 +1,15 @@
 from __future__ import annotations
+
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared.logger import logger
 
 
 @asynccontextmanager
-async def db_transaction(session: AsyncSession):
+async def db_transaction(session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
     """
     Async context manager — Python's equivalent of Java try-with-resources.
     Guarantees: transaction is always committed or rolled back.

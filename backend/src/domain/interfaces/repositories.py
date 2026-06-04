@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TypeVar
 
-from domain.entities.boost import Boost
-from domain.entities.dispute import Dispute
-from domain.entities.message import Message
-from domain.entities.notification import Notification
-from domain.entities.offer import Offer
-from domain.entities.review import Review
-from domain.entities.task import Task
-from domain.entities.transaction import Transaction
-from domain.entities.user import Client, Hiver
-from domain.value_objects.location import Location
+from src.domain.entities.boost import Boost
+from src.domain.entities.dispute import Dispute
+from src.domain.entities.message import Message
+from src.domain.entities.notification import Notification
+from src.domain.entities.offer import Offer
+from src.domain.entities.review import Review
+from src.domain.entities.task import Task
+from src.domain.entities.transaction import Transaction
+from src.domain.entities.user import Client, Hiver
+from src.domain.value_objects.location import Location
 
 T = TypeVar("T")
 ID = TypeVar("ID", str, int)
@@ -22,7 +22,7 @@ ID = TypeVar("ID", str, int)
 # ── Generic Base ────────────────────────────────────────────────────────────
 
 
-class IRepository(ABC, Generic[T, ID]):
+class IRepository[T, ID: (str, int)](ABC):
     """
     Generic repository interface.
     OOP: Generics — one interface works for User, Task, Offer, etc.
@@ -40,7 +40,7 @@ class IRepository(ABC, Generic[T, ID]):
 
 
 @dataclass
-class PaginatedResult(Generic[T]):
+class PaginatedResult[T]:
     """Generic paginated response — works for any entity type."""
 
     items: list[T]
@@ -63,18 +63,18 @@ E = TypeVar("E", bound="Exception")
 
 
 @dataclass(frozen=True)
-class Success(Generic[T]):
+class Success[T]:
     data: T
     success: bool = True
 
 
 @dataclass(frozen=True)
-class Failure(Generic[E]):  # type: ignore[type-var]
+class Failure[E: "Exception"]:
     error: E
     success: bool = False
 
 
-Result = Success[T] | Failure  # type alias
+Result = Success[T] | Failure[Exception]  # type alias
 
 
 # ── Interface Segregation (SOLID — I) ───────────────────────────────────────

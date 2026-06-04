@@ -1,18 +1,20 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
+from typing import Any
 
-from domain.value_objects.money import Money
-from domain.value_objects.location import Location
-from domain.errors.domain_errors import (
+from src.domain.errors.domain_errors import (
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
     UnauthorizedActionError,
 )
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     OPEN = "open"
     ACCEPTED = "accepted"
     IN_PROGRESS = "in_progress"
@@ -44,14 +46,14 @@ class Task:
     budget_max: Money | None = None
     is_urgent: bool = False
     location: Location | None = None
-    smart_answers: dict = field(default_factory=dict)
+    smart_answers: dict[str, Any] = field(default_factory=dict)
     image_urls: list[str] = field(default_factory=list)
     expires_at: datetime | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
-        from domain.errors.domain_errors import (
+        from src.domain.errors.domain_errors import (
             InvalidBudgetRangeError,
             InvalidVerticalError,
         )

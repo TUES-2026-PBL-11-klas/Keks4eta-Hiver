@@ -1,30 +1,35 @@
+from typing import Any, cast
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import RedirectResponse
 
-from src.infrastructure.http.dependencies import SessionDep
-from src.infrastructure.http.rate_limit import limiter
-from src.infrastructure.http.oauth import oauth, is_provider_configured, SUPPORTED_PROVIDERS
+from src.application.dtos.auth_dtos import (
+    LoginRequest,
+    OAuthUserInfo,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+)
+from src.application.use_cases.auth.login_use_case import LoginUseCase
+from src.application.use_cases.auth.oauth_login_use_case import OAuthLoginUseCase
+from src.application.use_cases.auth.refresh_token_use_case import RefreshTokenUseCase
+from src.application.use_cases.auth.register_use_case import RegisterUseCase
+from src.domain.errors.domain_errors import (
+    OAuthError,
+    OAuthProviderNotConfiguredError,
+)
 from src.infrastructure.database.repositories.user_repository import (
     PostgresClientRepository,
     PostgresHiverRepository,
 )
-from src.application.use_cases.auth.register_use_case import RegisterUseCase
-from src.application.use_cases.auth.login_use_case import LoginUseCase
-from src.application.use_cases.auth.refresh_token_use_case import RefreshTokenUseCase
-from src.application.use_cases.auth.oauth_login_use_case import OAuthLoginUseCase
-from src.application.dtos.auth_dtos import (
-    RegisterRequest,
-    LoginRequest,
-    RefreshRequest,
-    OAuthUserInfo,
-    TokenResponse,
+from src.infrastructure.http.dependencies import SessionDep
+from src.infrastructure.http.oauth import (
+    SUPPORTED_PROVIDERS,
+    is_provider_configured,
+    oauth,
 )
-from src.domain.errors.domain_errors import (
-    OAuthProviderNotConfiguredError,
-    OAuthError,
-)
+from src.infrastructure.http.rate_limit import limiter
 from src.shared.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -78,7 +83,7 @@ async def oauth_login(
     base = settings.oauth_redirect_base_url.rstrip("/")
     redirect_uri = f"{base}{settings.api_prefix}/auth/oauth/{provider}/callback"
     client = oauth.create_client(provider)
-    return await client.authorize_redirect(request, redirect_uri)
+    return cast(RedirectResponse, await client.authorize_redirect(request, redirect_uri))
 
 
 @router.get("/oauth/{provider}/callback")
@@ -101,7 +106,7 @@ async def oauth_callback(
         return RedirectResponse(f"{settings.frontend_url}/login?error=oauth_failed")
 
     role = request.session.pop("oauth_role", "client")
-    info.role = role  # type: ignore[assignment]
+    info.role = role
 
     use_case = OAuthLoginUseCase(
         client_repo=PostgresClientRepository(session),
@@ -116,7 +121,7 @@ async def oauth_callback(
     return RedirectResponse(f"{settings.frontend_url}/auth/callback#{fragment}")
 
 
-async def _extract_user_info(provider: str, client, token) -> OAuthUserInfo:
+async def _extract_user_info(provider: str, client: Any, token: Any) -> OAuthUserInfo:
     """Normalize the provider-specific userinfo payload into our DTO."""
     if provider == "google":
         data = token.get("userinfo")
