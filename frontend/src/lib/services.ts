@@ -181,10 +181,22 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface Conversation {
+  task_id: string;
+  task_title: string;
+  other_user_id: string | null;
+  other_user_name: string;
+  other_user_avatar: string | null;
+  last_message: string;
+  last_at: string;
+  unread: number;
+}
+
 export const messageService = {
   list: (taskId: string) => api.get<ChatMessage[]>(`/tasks/${taskId}/messages`),
   send: (taskId: string, content: string) =>
     api.post<ChatMessage>(`/tasks/${taskId}/messages`, { content }),
+  conversations: () => api.get<Conversation[]>("/conversations"),
 };
 
 export interface Dispute {

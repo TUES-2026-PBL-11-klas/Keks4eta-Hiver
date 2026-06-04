@@ -1,7 +1,12 @@
 from fastapi import APIRouter
 
-from src.application.dtos.message_dtos import MessageResponse, SendMessageRequest
+from src.application.dtos.message_dtos import (
+    ConversationResponse,
+    MessageResponse,
+    SendMessageRequest,
+)
 from src.application.use_cases.messages.message_use_cases import (
+    ListConversationsUseCase,
     ListMessagesUseCase,
     SendMessageUseCase,
 )
@@ -11,9 +16,26 @@ from src.infrastructure.database.repositories.message_repository import (
 from src.infrastructure.database.repositories.task_repository import (
     PostgresTaskRepository,
 )
+from src.infrastructure.database.repositories.user_repository import (
+    PostgresClientRepository,
+)
 from src.infrastructure.http.dependencies import EventBusDep, SessionDep, UserPayloadDep
 
 router = APIRouter(tags=["messages"])
+
+
+@router.get("/conversations", response_model=list[ConversationResponse])
+async def list_conversations(
+    session: SessionDep,
+    payload: UserPayloadDep,
+) -> list[ConversationResponse]:
+    """The signed-in user's chat inbox — one row per task thread."""
+    use_case = ListConversationsUseCase(
+        message_repo=PostgresMessageRepository(session),
+        task_repo=PostgresTaskRepository(session),
+        client_repo=PostgresClientRepository(session),
+    )
+    return await use_case.execute(payload["sub"])
 
 
 @router.get("/tasks/{task_id}/messages", response_model=list[MessageResponse])

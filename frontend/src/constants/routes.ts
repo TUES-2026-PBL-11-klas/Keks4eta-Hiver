@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   HIVERS: "/hivers",
   FAVORITES: "/saved",
+  INBOX: "/inbox",
   PROFILE: "/profile",
   SETTINGS: "/settings",
   HIVER_PROFILE: "/hivers/:id",

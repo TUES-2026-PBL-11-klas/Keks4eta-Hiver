@@ -15,7 +15,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅, favorites (save tasks/hivers) ✅, task promotion (pay-to-feature) ✅ | — |
+| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅, favorites (save tasks/hivers) ✅, task promotion (pay-to-feature) ✅, chat inbox (conversations list + unread) ✅ | — |
 | 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
 
 ## Tech Stack (short)
@@ -176,6 +176,7 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
 | GET    | `/tasks/{id}/messages` | Auth | Chat thread (client + assigned hiver only) |
 | POST   | `/tasks/{id}/messages` | Auth | Send a chat message (notifies the other party) |
+| GET    | `/conversations` | Auth | Chat inbox — one row per task thread (last message + unread) |
 | GET    | `/tasks/{id}/disputes` | Auth | The task's dispute, if any (participants only) |
 | POST   | `/tasks/{id}/disputes` | Auth | Open a dispute — locks escrow as `disputed` |
 | POST   | `/tasks/{id}/disputes/resolve` | Auth | Resolve by concession (client→release, hiver→refund) |

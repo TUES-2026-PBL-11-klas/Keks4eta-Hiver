@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TypeVar
 
 from src.domain.entities.boost import Boost
@@ -235,6 +236,16 @@ class IDisputeRepository(ABC):
     async def save(self, dispute: Dispute) -> Dispute: ...
 
 
+@dataclass(frozen=True)
+class ConversationRow:
+    """Per-task inbox summary: the latest message and the reader's unread count."""
+
+    task_id: str
+    last_content: str
+    last_at: datetime
+    unread: int
+
+
 class IMessageRepository(ABC):
     """Task chat messages between the client and the assigned hiver."""
 
@@ -247,6 +258,12 @@ class IMessageRepository(ABC):
     @abstractmethod
     async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
         """Mark messages the reader received (sender != reader) as read."""
+        ...
+
+    @abstractmethod
+    async def list_conversations(self, user_id: str) -> list[ConversationRow]:
+        """One row per task the user chats on — latest message + unread count,
+        newest first. Drives the inbox."""
         ...
 
 

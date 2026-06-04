@@ -368,6 +368,7 @@ earnings past it.
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
 | GET | /tasks/{id}/messages | Auth | Chat thread (client + assigned hiver) |
 | POST | /tasks/{id}/messages | Auth | Send a chat message |
+| GET | /conversations | Auth | Chat inbox — one row per task thread (last message + unread) |
 | GET | /tasks/{id}/disputes | Auth | The task's dispute, if any |
 | POST | /tasks/{id}/disputes | Auth | Open a dispute (locks escrow) |
 | POST | /tasks/{id}/disputes/resolve | Auth | Resolve by concession (release/refund) |

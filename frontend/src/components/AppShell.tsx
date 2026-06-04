@@ -12,6 +12,7 @@ import {
   PinIcon,
   GridIcon,
   HeartIcon,
+  ChatIcon,
 } from "@/components/icons";
 import logo from "@/assets/logo.svg";
 import s from "./AppShell.module.css";
@@ -50,6 +51,7 @@ export default function AppShell({ children }: Props) {
   ];
   if (isAuthenticated) {
     nav.push({ to: ROUTES.DASHBOARD, label: "Dashboard", Icon: GridIcon });
+    nav.push({ to: ROUTES.INBOX, label: "Inbox", Icon: ChatIcon });
     nav.push({ to: ROUTES.FAVORITES, label: "Saved", Icon: HeartIcon });
   }
 

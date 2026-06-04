@@ -1,10 +1,14 @@
 import uuid
 
-from src.application.dtos.message_dtos import MessageResponse
+from src.application.dtos.message_dtos import ConversationResponse, MessageResponse
 from src.domain.entities.message import Message
 from src.domain.entities.task import Task
 from src.domain.errors.domain_errors import TaskNotFoundError, UnauthorizedActionError
-from src.domain.interfaces.repositories import IMessageRepository, ITaskRepository
+from src.domain.interfaces.repositories import (
+    IClientRepository,
+    IMessageRepository,
+    ITaskRepository,
+)
 from src.domain.services.event_bus import EventBus, notify
 
 
@@ -92,3 +96,48 @@ class ListMessagesUseCase:
             )
             for m in messages
         ]
+
+
+class ListConversationsUseCase:
+    """Inbox: every task thread the user is in, newest-active first, each with
+    the other party and an unread count. Resolves the message-only aggregate
+    rows from the repo against the task and the other participant's profile."""
+
+    def __init__(
+        self,
+        message_repo: IMessageRepository,
+        task_repo: ITaskRepository,
+        client_repo: IClientRepository,
+    ) -> None:
+        self._message_repo = message_repo
+        self._task_repo = task_repo
+        self._client_repo = client_repo
+
+    async def execute(self, user_id: str) -> list[ConversationResponse]:
+        rows = await self._message_repo.list_conversations(user_id)
+        out: list[ConversationResponse] = []
+        for row in rows:
+            task = await self._task_repo.find_by_id(row.task_id)
+            if task is None:
+                continue
+            other_id = (
+                task.hiver_id if user_id == task.client_id else task.client_id
+            )
+            # Every account has a client facet (unified accounts), so this reads
+            # the shared user row (name + avatar) for whoever the other party is.
+            other = (
+                await self._client_repo.find_by_id(other_id) if other_id else None
+            )
+            out.append(
+                ConversationResponse(
+                    task_id=row.task_id,
+                    task_title=task.title,
+                    other_user_id=other_id,
+                    other_user_name=other.full_name if other else "Unknown",
+                    other_user_avatar=other.avatar_url if other else None,
+                    last_message=row.last_content,
+                    last_at=row.last_at,
+                    unread=row.unread,
+                )
+            )
+        return out
