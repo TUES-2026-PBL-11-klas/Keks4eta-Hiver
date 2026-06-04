@@ -22,6 +22,7 @@ from src.infrastructure.http.rate_limit import limiter
 from src.infrastructure.http.routers import (
     auth,
     disputes,
+    favorites,
     messages,
     notifications,
     offers,
@@ -90,6 +91,7 @@ app.include_router(payments.router, prefix=settings.api_prefix)
 app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(messages.router, prefix=settings.api_prefix)
 app.include_router(disputes.router, prefix=settings.api_prefix)
+app.include_router(favorites.router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["health"])

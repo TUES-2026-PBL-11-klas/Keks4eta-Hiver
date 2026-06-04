@@ -15,6 +15,7 @@ import Dashboard from "@/pages/Dashboard";
 import NearbyHivers from "@/pages/NearbyHivers";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
+import Favorites from "@/pages/Favorites";
 import PublicProfile from "@/pages/PublicProfile";
 
 function Animated({ children }: { children: React.ReactNode }) {
@@ -76,6 +77,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Animated><Settings /></Animated>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.FAVORITES}
+            element={
+              <ProtectedRoute>
+                <Animated><Favorites /></Animated>
               </ProtectedRoute>
             }
           />

@@ -6,6 +6,7 @@ from typing import TypeVar
 
 from src.domain.entities.boost import Boost
 from src.domain.entities.dispute import Dispute
+from src.domain.entities.favorite import Favorite
 from src.domain.entities.message import Message
 from src.domain.entities.notification import Notification
 from src.domain.entities.offer import Offer
@@ -198,6 +199,26 @@ class IBoostRepository(ABC):
     @abstractmethod
     async def active_hiver_ids(self, vertical: str | None = None) -> set[str]:
         """Ids of hivers with a currently-active boost applicable to `vertical`."""
+        ...
+
+
+class IFavoriteRepository(ABC):
+    """A user's saved tasks/hivers (DB-unique on user_id, target_type, target_id)."""
+
+    @abstractmethod
+    async def add(self, favorite: Favorite) -> Favorite: ...
+
+    @abstractmethod
+    async def remove(self, user_id: str, target_type: str, target_id: str) -> None: ...
+
+    @abstractmethod
+    async def list_for_user(
+        self, user_id: str, target_type: str
+    ) -> list[Favorite]: ...
+
+    @abstractmethod
+    async def target_ids(self, user_id: str, target_type: str) -> list[str]:
+        """Just the target ids of a given type — for marking saved state in lists."""
         ...
 
 

@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { paths } from "@/constants/routes";
 import { Badge, Card } from "@/components/ui";
-import { PinIcon, WalletIcon, BoltIcon } from "@/components/icons";
+import { PinIcon, WalletIcon, BoltIcon, StarIcon } from "@/components/icons";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { budgetLabel } from "@/lib/format";
 import type { TaskStatus, TaskSummary } from "@/types";
 import s from "./TaskCard.module.css";
@@ -37,11 +38,7 @@ export function TaskCard({ task }: { task: TaskSummary }) {
         <div className={s.main}>
           <div className={s.top}>
             <h3 className={s.title}>{task.title}</h3>
-            {task.is_urgent && (
-              <Badge tone="error">
-                <BoltIcon size={11} /> Urgent
-              </Badge>
-            )}
+            <FavoriteButton type="task" id={task.id} className={s.heart} />
           </div>
           <span className={s.sub}>{task.vertical} · {task.subcategory}</span>
           <div className={s.meta}>
@@ -57,6 +54,16 @@ export function TaskCard({ task }: { task: TaskSummary }) {
             )}
           </div>
           <div className={s.foot}>
+            {task.is_featured && (
+              <Badge tone="honey">
+                <StarIcon size={11} filled /> Featured
+              </Badge>
+            )}
+            {task.is_urgent && (
+              <Badge tone="error">
+                <BoltIcon size={11} /> Urgent
+              </Badge>
+            )}
             <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { userService } from "@/lib/services";
 import { paths, VERTICALS } from "@/constants/routes";
 import { Avatar, Badge, Button, Card, EmptyState, Skeleton, Stars } from "@/components/ui";
 import { Reveal } from "@/components/Reveal";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { PinIcon, Hexagon } from "@/components/icons";
 import type { HiverSearchResult, Vertical } from "@/types";
 import s from "./NearbyHivers.module.css";
@@ -169,7 +170,8 @@ export default function NearbyHivers() {
           {hivers.map((h, i) => (
             <Reveal key={h.user_id} delay={Math.min(i, 6) * 0.04}>
               <Link to={paths.hiver(h.user_id)} style={{ display: "block", height: "100%" }}>
-                <Card hover className={s.hiver}>
+                <Card hover className={s.hiver} style={{ position: "relative" }}>
+                  <FavoriteButton type="hiver" id={h.user_id} className={s.hiverHeart} />
                   <Avatar name={h.full_name} src={h.avatar_url} size={56} />
                   <div className={s.info}>
                     <span className={s.name}>{h.full_name}</span>

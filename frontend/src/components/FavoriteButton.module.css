@@ -1,0 +1,18 @@
+.btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--ink-400);
+  background: transparent;
+  transition: color 0.16s ease, background 0.16s ease, transform 0.12s ease;
+}
+.btn:hover {
+  color: var(--color-error, #e1483a);
+  background: var(--card-2);
+}
+.btn:active { transform: scale(0.9); }
+.on {
+  color: var(--color-error, #e1483a);
+}

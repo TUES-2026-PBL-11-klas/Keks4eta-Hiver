@@ -77,7 +77,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
 - PostGIS geospatial queries (`find_hivers_in_radius` stored function)
 - Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations (Supabase runs real Postgres, so the whole 001→020 chain applies normally)
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→022 chain applies normally)
 
 What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
 
@@ -205,10 +205,10 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 20 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 22 Alembic migrations that build the full schema from scratch in order.
 
-**SQLAlchemy Models (13 tables):**
-`users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
+**SQLAlchemy Models (14 tables):**
+`users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`, `favorites`
 
 **Account model — unified (every account is both client and hiver):** one `users`
 row owns BOTH a `clients` row and a `hivers` row (keyed on `user_id`). Registration
@@ -217,7 +217,7 @@ Endpoints are no longer gated by a role claim — any authenticated user can pos
 *and* offer/work — with the rule that you cannot offer on your own task
 (`CANNOT_OFFER_ON_OWN_TASK`). The `users.role` column is retained but vestigial.
 
-**The 20 Migrations:**
+**The 22 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -240,6 +240,8 @@ Endpoints are no longer gated by a role claim — any authenticated user can pos
 | 018 | task_budget_range_check | `CHECK (budget_max IS NULL OR budget_min IS NULL OR budget_min <= budget_max)` on `tasks` — DB-level guard for the budget rule |
 | 019 | backfill_dual_role_profiles | Unified accounts: backfills the missing `clients`/`hivers` row for every user so each account has both facets |
 | 020 | hiver_location_display | Adds `location_display` to `hivers` — the human-readable address shown next to the PostGIS `location_point`, set from the profile Settings page |
+| 021 | create_favorites | `favorites` table (user_id, target_type task\|hiver, target_id) with a unique save constraint; RLS enabled (default-deny) like 017 |
+| 022 | task_featured_until | Adds indexed `featured_until` to `tasks` — paid promotion window; search pins currently-featured tasks first |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -357,6 +359,7 @@ earnings past it.
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
 | POST | /tasks/{id}/complete | Client JWT | Mark task done |
 | POST | /tasks/{id}/cancel | Client JWT | Cancel non-completed task |
+| POST | /tasks/{id}/boost | Client JWT | Pay to feature the task atop search for 7 days (mock-charged) |
 | POST | /tasks/{id}/images | Client JWT | Upload a task photo (Supabase Storage) |
 | POST | /tasks/{id}/reviews | Auth | Submit review (blind-reveal via DB trigger) |
 | GET | /tasks/{id}/reviews | None | List task reviews (`only_revealed=true` by default) |
@@ -384,6 +387,11 @@ earnings past it.
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
 | POST | /users/hivers/me/boost | Hiver JWT | Buy a visibility boost (mock-charged) |
 | GET | /users/hivers/me/boost | Hiver JWT | My active boost, if any |
+| POST | /favorites | Auth | Save a task or hiver (idempotent) |
+| DELETE | /favorites/{target_type}/{target_id} | Auth | Unsave a task or hiver |
+| GET | /favorites/tasks | Auth | My saved tasks |
+| GET | /favorites/hivers | Auth | My saved hivers |
+| GET | /favorites/ids | Auth | Saved id sets per type (fills hearts) |
 
 **Deferred to Phase 5 (non-blocking for grading of Phase 4):**
 - ~~Real-time chat / message endpoints~~ ✅ **Done (Phase 7)** — task chat between the client and
@@ -545,7 +553,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–020 Alembic migrations
+│           │   ├── migrations/versions/  001–022 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

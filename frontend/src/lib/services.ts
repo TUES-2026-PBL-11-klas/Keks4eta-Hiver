@@ -3,6 +3,8 @@ import type {
   ClientProfile,
   CreateOfferBody,
   CreateTaskBody,
+  FavoriteIds,
+  FavoriteTarget,
   HiverProfile,
   HiverSearchResult,
   Me,
@@ -68,6 +70,10 @@ export const taskService = {
     fd.append("file", file);
     return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
   },
+  boost: (id: string) =>
+    api.post<{ task_id: string; featured_until: string; price_bgn: number }>(
+      `/tasks/${id}/boost`,
+    ),
 };
 
 export const offerService = {
@@ -104,6 +110,16 @@ export const userService = {
     fd.append("file", file);
     return api.upload<Me>("/users/me/avatar", fd);
   },
+};
+
+export const favoriteService = {
+  ids: () => api.get<FavoriteIds>("/favorites/ids"),
+  tasks: () => api.get<TaskSummary[]>("/favorites/tasks"),
+  hivers: () => api.get<HiverProfile[]>("/favorites/hivers"),
+  add: (target_type: FavoriteTarget, target_id: string) =>
+    api.post("/favorites", { target_type, target_id }),
+  remove: (target_type: FavoriteTarget, target_id: string) =>
+    api.delete(`/favorites/${target_type}/${target_id}`),
 };
 
 export interface Boost {

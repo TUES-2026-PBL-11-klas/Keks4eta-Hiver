@@ -119,3 +119,29 @@ class TestTaskBudget:
     def test_equal_min_and_max_allowed(self):
         task = make_task(budget_min=Money.of(50), budget_max=Money.of(50))
         assert task.budget_midpoint() == Money.of(50)
+
+
+class TestTaskFeature:
+    def test_not_featured_by_default(self):
+        assert make_task().is_featured() is False
+
+    def test_feature_sets_future_window(self):
+        task = make_task()
+        task.feature(7)
+        assert task.featured_until is not None
+        assert task.is_featured() is True
+
+    def test_feature_extends_existing_window(self):
+        task = make_task()
+        task.feature(7)
+        first = task.featured_until
+        assert first is not None
+        task.feature(7)  # buying again stacks rather than resets
+        assert task.featured_until is not None
+        assert task.featured_until > first
+
+    def test_expired_feature_is_not_active(self):
+        from datetime import UTC, datetime, timedelta
+
+        task = make_task(featured_until=datetime.now(UTC) - timedelta(days=1))
+        assert task.is_featured() is False

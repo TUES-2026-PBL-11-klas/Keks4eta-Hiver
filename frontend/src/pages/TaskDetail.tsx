@@ -17,6 +17,7 @@ import { budgetLabel } from "@/lib/format";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
 import { Avatar, Badge, Button, Card, EmptyState, Spinner, Stars } from "@/components/ui";
 import { Modal } from "@/components/Modal";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import {
   ArrowLeftIcon,
   PinIcon,
@@ -201,16 +202,18 @@ export default function TaskDetail() {
         <div>
           <div className={s.headRow}>
             <span className={s.glyph}><Icon size={26} /></span>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <h1 className={s.title}>{task.title}</h1>
               <p className={s.sub}>{task.vertical} · {task.subcategory}</p>
             </div>
+            {!isOwner && <FavoriteButton type="task" id={task.id} size={22} />}
           </div>
 
           <div className={s.badges}>
             <Badge tone={task.status === "open" ? "honey" : task.status === "completed" ? "success" : "info"}>
               {task.status.replace("_", " ")}
             </Badge>
+            {task.is_featured && <Badge tone="honey"><StarIcon size={11} filled /> Featured</Badge>}
             {task.is_urgent && <Badge tone="error"><BoltIcon size={11} /> Urgent</Badge>}
           </div>
 
@@ -401,6 +404,17 @@ export default function TaskDetail() {
               {(isOwner || isAssignedHiver) && escrow?.status === "held" && !dispute && (
                 <Button variant="ghost" onClick={() => setDisputeOpen(true)} disabled={busy}>
                   Report a problem
+                </Button>
+              )}
+
+              {isOwner && (task.status === "open" || task.status === "accepted") && (
+                <Button
+                  variant="secondary"
+                  onClick={() => run(() => taskService.boost(task.id))}
+                  disabled={busy}
+                >
+                  <StarIcon size={16} filled={task.is_featured} />
+                  {task.is_featured ? "Extend boost · 3 BGN" : "Boost task · 3 BGN"}
                 </Button>
               )}
 

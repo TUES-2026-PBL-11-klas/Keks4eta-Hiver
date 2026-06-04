@@ -2,6 +2,7 @@ from .base import Base
 from .boost_model import BoostModel
 from .client_model import ClientModel
 from .dispute_model import DisputeModel
+from .favorite_model import FavoriteModel
 from .hiver_model import HiverModel
 from .message_model import MessageModel
 from .notification_log_model import NotificationLogModel
@@ -19,6 +20,7 @@ __all__ = [
     "HiverModel",
     "SkillModel",
     "hiver_skills",
+    "FavoriteModel",
     "TaskModel",
     "OfferModel",
     "TransactionModel",

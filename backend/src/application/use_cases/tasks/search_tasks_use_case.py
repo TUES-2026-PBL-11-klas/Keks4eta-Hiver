@@ -54,6 +54,7 @@ class SearchTasksUseCase:
                 location_display=t.location.display_address if t.location else None,
                 latitude=t.location.latitude if t.location else None,
                 longitude=t.location.longitude if t.location else None,
+                is_featured=t.is_featured(),
                 created_at=t.created_at,
             )
             for t in result.items

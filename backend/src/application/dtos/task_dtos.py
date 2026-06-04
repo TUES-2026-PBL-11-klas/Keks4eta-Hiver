@@ -67,6 +67,8 @@ class TaskSummaryResponse(BaseModel):
     # Real coordinates (from PostGIS) so the SPA can drop a map pin per task.
     latitude: float | None = None
     longitude: float | None = None
+    # Paid promotion — featured tasks are pinned atop search results.
+    is_featured: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -86,3 +88,16 @@ class TaskDetailResponse(TaskSummaryResponse):
 
 class UpdateTaskStatusRequest(BaseModel):
     status: Literal["accepted", "in_progress", "completed", "cancelled"]
+
+
+# Fixed task-promotion pricing for the demo (mock-charged via the payment port).
+TASK_BOOST_PRICE_BGN = 3.0
+TASK_BOOST_DURATION_DAYS = 7
+
+
+class BoostTaskResponse(BaseModel):
+    task_id: str
+    featured_until: datetime
+    price_bgn: float = TASK_BOOST_PRICE_BGN
+
+    model_config = {"from_attributes": True}

@@ -11,6 +11,7 @@ import {
   PlusIcon,
   PinIcon,
   GridIcon,
+  HeartIcon,
 } from "@/components/icons";
 import logo from "@/assets/logo.svg";
 import s from "./AppShell.module.css";
@@ -47,7 +48,10 @@ export default function AppShell({ children }: Props) {
     { to: ROUTES.TASKS, label: "Browse", Icon: SearchIcon },
     { to: ROUTES.HIVERS, label: "Hivers", Icon: PinIcon },
   ];
-  if (isAuthenticated) nav.push({ to: ROUTES.DASHBOARD, label: "Dashboard", Icon: GridIcon });
+  if (isAuthenticated) {
+    nav.push({ to: ROUTES.DASHBOARD, label: "Dashboard", Icon: GridIcon });
+    nav.push({ to: ROUTES.FAVORITES, label: "Saved", Icon: HeartIcon });
+  }
 
   // Unified accounts can both post and work, so the primary CTA is always
   // "Post" once signed in ("Find work" lives in the Browse nav item).

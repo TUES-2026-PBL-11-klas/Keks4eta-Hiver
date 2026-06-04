@@ -75,7 +75,17 @@ export interface TaskSummary {
   location_display?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** Paid promotion — featured tasks are pinned atop search results. */
+  is_featured?: boolean;
   created_at: string;
+}
+
+// ── Favorites ─────────────────────────────────────────────────────────────
+export type FavoriteTarget = "task" | "hiver";
+
+export interface FavoriteIds {
+  tasks: string[];
+  hivers: string[];
 }
 
 export interface TaskDetail extends TaskSummary {

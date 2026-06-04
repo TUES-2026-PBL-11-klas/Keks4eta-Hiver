@@ -40,6 +40,7 @@ class TaskModel(Base):
     smart_answers:    Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=dict)
     image_urls:       Mapped[list[str]]   = mapped_column(ARRAY(Text), default=list)
     expires_at:       Mapped[datetime|None] = mapped_column(DateTime(timezone=True))
+    featured_until:   Mapped[datetime|None] = mapped_column(DateTime(timezone=True), index=True)
     created_at:       Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:       Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

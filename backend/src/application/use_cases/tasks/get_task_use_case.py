@@ -27,6 +27,7 @@ class GetTaskUseCase:
             location_display=task.location.display_address if task.location else None,
             latitude=task.location.latitude if task.location else None,
             longitude=task.location.longitude if task.location else None,
+            is_featured=task.is_featured(),
             smart_answers=task.smart_answers,
             image_urls=task.image_urls,
             expires_at=task.expires_at,

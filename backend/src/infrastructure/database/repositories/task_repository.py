@@ -40,6 +40,7 @@ def _model_to_domain(
         smart_answers=m.smart_answers or {},
         image_urls=m.image_urls or [],
         expires_at=m.expires_at,
+        featured_until=m.featured_until,
         created_at=m.created_at,
         updated_at=m.updated_at,
     )
@@ -176,17 +177,25 @@ class PostgresTaskRepository(ITaskRepository):
             count_q = count_q.where(geo_clause)
             list_q = list_q.where(geo_clause)
 
+        # Paid promotion wins first: currently-featured tasks are pinned to the
+        # top regardless of the chosen sort, which then orders within each group.
+        featured_first = (
+            (TaskModel.featured_until.isnot(None)) & (TaskModel.featured_until > func.now())
+        ).desc()
         if sort == "budget":
-            list_q = list_q.order_by(TaskModel.budget_max.desc().nullslast())
+            list_q = list_q.order_by(
+                featured_first, TaskModel.budget_max.desc().nullslast()
+            )
         elif sort == "distance" and geo_active:
             list_q = list_q.order_by(
+                featured_first,
                 text(
                     "ST_Distance(location_point, "
                     "ST_MakePoint(:geo_olng, :geo_olat)::geography) ASC"
-                ).bindparams(geo_olng=lng, geo_olat=lat)
+                ).bindparams(geo_olng=lng, geo_olat=lat),
             )
         else:  # "recent" / default
-            list_q = list_q.order_by(TaskModel.created_at.desc())
+            list_q = list_q.order_by(featured_first, TaskModel.created_at.desc())
 
         total = (await self._session.execute(count_q)).scalar_one()
         result = await self._session.execute(
@@ -248,12 +257,14 @@ class PostgresTaskRepository(ITaskRepository):
                 smart_answers=task.smart_answers,
                 image_urls=task.image_urls,
                 expires_at=task.expires_at,
+                featured_until=task.featured_until,
             )
             self._session.add(model)
         else:
             model.hiver_id = task.hiver_id
             model.status = task.status.value
             model.image_urls = list(task.image_urls)
+            model.featured_until = task.featured_until
             model.updated_at = task.updated_at
         await self._session.flush()
         return task

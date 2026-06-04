@@ -15,7 +15,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅ | — |
+| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅, favorites (save tasks/hivers) ✅, task promotion (pay-to-feature) ✅ | — |
 | 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
 
 ## Tech Stack (short)
@@ -25,7 +25,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (20 chained) |
+| Migrations | Alembic (22 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
 | Auth | JWT (python-jose) + pwdlib (Argon2, bcrypt fallback); social login via Authlib (Google + Facebook) |
@@ -48,7 +48,7 @@ hiver/
 │   ├── src/
 │   │   ├── domain/            entities, value objects, errors, interfaces
 │   │   ├── application/       use cases + DTOs
-│   │   ├── infrastructure/    database (models, migrations 001–020, seed.py), http, payments, storage adapters
+│   │   ├── infrastructure/    database (models, migrations 001–022, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
 │   ├── tests/                 unit (domain) + use-case tests
@@ -167,6 +167,7 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
 | POST   | `/tasks/{id}/complete` | Client | Client marks task done |
 | POST   | `/tasks/{id}/cancel` | Client | Cancel a non-completed task |
+| POST   | `/tasks/{id}/boost` | Client | Pay to feature the task atop search for 7 days (mock-charged) |
 | POST   | `/tasks/{id}/images` | Client | Upload a task photo to Supabase Storage |
 | POST   | `/tasks/{id}/reviews` | Auth | Submit review (blind-reveal via DB trigger) |
 | GET    | `/tasks/{id}/reviews` | – | List reviews on a task (revealed by default) |
@@ -191,6 +192,11 @@ npm run dev                     # http://localhost:5173
 | PATCH  | `/users/hivers/me/availability` | Hiver | Toggle availability |
 | POST   | `/users/hivers/me/boost` | Hiver | Buy a visibility boost (mock-charged, 7 days) |
 | GET    | `/users/hivers/me/boost` | Hiver | My active boost, if any |
+| POST   | `/favorites` | Auth | Save a task or hiver (`target_type`, `target_id`) — idempotent |
+| DELETE | `/favorites/{target_type}/{target_id}` | Auth | Unsave a task or hiver |
+| GET    | `/favorites/tasks` | Auth | My saved tasks |
+| GET    | `/favorites/hivers` | Auth | My saved hivers |
+| GET    | `/favorites/ids` | Auth | Saved id sets per type (SPA fills hearts from this) |
 
 Escrow is now functional end-to-end via a mock payment adapter — accepting an offer holds
 funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live
@@ -210,5 +216,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 20 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
+| **БД** (Databases) | 22 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |
