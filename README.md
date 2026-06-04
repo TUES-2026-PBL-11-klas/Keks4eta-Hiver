@@ -25,14 +25,14 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (17 chained) |
+| Migrations | Alembic (19 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
 | Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
 | Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
-| Storage | Supabase Storage (task images) |
-| Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — map pins on Nearby Hivers, address autocomplete on Post-a-task |
-| Frontend | React 18 + TypeScript 5 + Vite 5 + Framer Motion (responsive web app) |
+| Storage | Supabase Storage (task images); Pillow validates image integrity before upload |
+| Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — task pins on Find-tasks & hiver pins on Nearby Hivers, address autocomplete on Post-a-task; keyless OSM fallback |
+| Frontend | React 19 + TypeScript 5 + Vite 8 + Framer Motion (responsive web app) |
 | Container | Docker (multi-stage) + docker-compose |
 | Infra (target) | Kubernetes + Helm + Terraform |
 | Observability | Prometheus + Grafana |
@@ -145,18 +145,22 @@ npm run dev                     # http://localhost:5173
 > All feature endpoints are mounted under **`/api/v1`** (e.g. `POST /api/v1/auth/login`).
 > `/health` stays at the root. The SPA's API base is `/api/v1` (override with `VITE_API_BASE`).
 
+> **Unified accounts:** every account is both a client and a hiver. The
+> `Client`/`Hiver` labels below now indicate which *facet* an action uses, not a
+> separate account type — any authenticated user can call them.
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET    | `/health` | – | Health check (root, no prefix) |
-| POST   | `/auth/register` | – | Sign up — **rate-limited 5/min/IP** |
+| POST   | `/auth/register` | – | Sign up — creates a unified account (client + hiver); **rate-limited 5/min/IP** |
 | POST   | `/auth/login` | – | Get JWT access + refresh — **rate-limited 10/min/IP** |
 | POST   | `/auth/refresh` | – | Exchange refresh token for a fresh token pair |
-| GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (`?role=client\|hiver`) |
+| GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (role param accepted but ignored) |
 | GET    | `/auth/oauth/{provider}/callback` | – | Provider redirect → issues JWT, redirects to SPA |
-| GET    | `/users/me` | Auth | Current authenticated user (role-aware) |
+| GET    | `/users/me` | Auth | Current authenticated user — both client + hiver facets |
 | POST   | `/tasks` | Client | Post a task |
 | GET    | `/tasks` | Client | List my tasks (paginated) |
-| GET    | `/tasks/search` | – | Public search: vertical, status, urgency, budget range |
+| GET    | `/tasks/search` | – | Public search: `vertical, status, is_urgent, min_budget, max_budget, q` (free-text), `lat/lng/radius_km` (PostGIS), `sort=recent\|distance\|budget` — results carry `latitude/longitude` for map pins |
 | GET    | `/tasks/{id}` | – | Task details |
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
 | POST   | `/tasks/{id}/complete` | Client | Client marks task done |
@@ -204,5 +208,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 17 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
+| **БД** (Databases) | 19 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |

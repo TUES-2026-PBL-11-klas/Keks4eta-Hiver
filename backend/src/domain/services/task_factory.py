@@ -6,7 +6,7 @@ from typing import Any
 from domain.entities.task import Task, VALID_VERTICALS
 from domain.value_objects.money import Money
 from domain.value_objects.location import Location
-from domain.errors.domain_errors import InvalidVerticalError
+from domain.errors.domain_errors import InvalidVerticalError, MissingSmartAnswerError
 
 
 @dataclass
@@ -64,7 +64,7 @@ class HomeTaskBuilder(TaskBuilder):
     def _validate(self) -> None:
         answers = self.data.smart_answers
         if "property_type" not in answers:
-            raise ValueError("Home tasks require 'property_type' in smart_answers")
+            raise MissingSmartAnswerError(self.data.vertical, "property_type")
 
 
 class LearnTaskBuilder(TaskBuilder):
@@ -73,14 +73,14 @@ class LearnTaskBuilder(TaskBuilder):
     def _validate(self) -> None:
         answers = self.data.smart_answers
         if "subject" not in answers:
-            raise ValueError("Learn tasks require 'subject' in smart_answers")
+            raise MissingSmartAnswerError(self.data.vertical, "subject")
 
 
 class TechTaskBuilder(TaskBuilder):
     def _validate(self) -> None:
         answers = self.data.smart_answers
         if "device_type" not in answers:
-            raise ValueError("Tech tasks require 'device_type' in smart_answers")
+            raise MissingSmartAnswerError(self.data.vertical, "device_type")
 
 
 class GenericTaskBuilder(TaskBuilder):

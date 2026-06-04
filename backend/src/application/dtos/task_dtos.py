@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Literal
 from datetime import datetime
 
@@ -35,6 +35,23 @@ class CreateTaskRequest(BaseModel):
             raise ValueError("title cannot be empty")
         return v.strip()
 
+    @field_validator("budget_min", "budget_max")
+    @classmethod
+    def budget_non_negative(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("budget cannot be negative")
+        return v
+
+    @model_validator(mode="after")
+    def budget_range(self) -> "CreateTaskRequest":
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
+            raise ValueError("budget_min cannot exceed budget_max")
+        return self
+
 
 class TaskSummaryResponse(BaseModel):
     id: str
@@ -46,6 +63,9 @@ class TaskSummaryResponse(BaseModel):
     budget_min: float | None
     budget_max: float | None
     location_display: str | None
+    # Real coordinates (from PostGIS) so the SPA can drop a map pin per task.
+    latitude: float | None = None
+    longitude: float | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

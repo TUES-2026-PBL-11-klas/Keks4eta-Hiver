@@ -56,7 +56,9 @@ export default function TaskDetail() {
 
   const isOwner = !!user && task?.client_id === user.id;
   const isAssignedHiver = !!user && task?.hiver_id === user.id;
-  const isHiver = user?.role === "hiver";
+  // Unified accounts: any signed-in user can act as a hiver (the "own task"
+  // case is excluded at each call site via !isOwner, and on the backend).
+  const isHiver = !!user;
   // Chat opens once a hiver is assigned, between the client and that hiver only.
   const canChat = (isOwner || isAssignedHiver) && !!task?.hiver_id;
 

@@ -40,8 +40,8 @@ async def get_current_client(
     payload: UserPayloadDep,
     session: SessionDep,
 ) -> Client:
-    if payload.get("role") != "client":
-        raise UnauthorizedActionError("access client-only resource")
+    # Unified accounts: any authenticated user has a client profile, so we no
+    # longer gate on a role claim — we just load the client facet by user id.
     client = await PostgresClientRepository(session).find_by_id(payload["sub"])
     if client is None:
         raise UnauthorizedActionError("access this resource")
@@ -52,8 +52,7 @@ async def get_current_hiver(
     payload: UserPayloadDep,
     session: SessionDep,
 ) -> Hiver:
-    if payload.get("role") != "hiver":
-        raise UnauthorizedActionError("access hiver-only resource")
+    # Unified accounts: any authenticated user has a hiver profile too.
     hiver = await PostgresHiverRepository(session).find_by_id(payload["sub"])
     if hiver is None:
         raise UnauthorizedActionError("access this resource")

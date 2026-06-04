@@ -61,6 +61,11 @@ async def search_tasks(
     is_urgent: bool | None = Query(None),
     min_budget: float | None = Query(None, ge=0.0),
     max_budget: float | None = Query(None, ge=0.0),
+    q: str | None = Query(None, description="Free-text over title/description/subcategory"),
+    lat: float | None = Query(None, ge=-90.0, le=90.0),
+    lng: float | None = Query(None, ge=-180.0, le=180.0),
+    radius_km: float | None = Query(None, gt=0.0, le=100.0),
+    sort: str | None = Query(None, description="recent|distance|budget (default recent)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> PaginatedResult[TaskSummaryResponse]:
@@ -71,6 +76,11 @@ async def search_tasks(
         is_urgent=is_urgent,
         min_budget=min_budget,
         max_budget=max_budget,
+        q=q,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+        sort=sort,
         page=page,
         page_size=page_size,
     )

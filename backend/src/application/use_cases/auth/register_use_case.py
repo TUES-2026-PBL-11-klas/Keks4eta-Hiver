@@ -28,17 +28,20 @@ class RegisterUseCase:
         self._hiver_repo = hiver_repo
 
     async def execute(self, request: RegisterRequest) -> TokenResponse:
-        # Check for duplicate email across both roles
         existing_client = await self._client_repo.find_by_email(request.email)
-        existing_hiver  = await self._hiver_repo.find_by_email(request.email)
+        existing_hiver = await self._hiver_repo.find_by_email(request.email)
         if existing_client or existing_hiver:
             raise DuplicateEmailError(request.email)
 
         user_id = str(uuid.uuid4())
         password_hash = pwd.hash(request.password)
 
-        if request.role == "client":
-            user = Client(
+        # Unified accounts: every new account gets BOTH a client and a hiver
+        # profile sharing one users row, so it can immediately post tasks and
+        # offer on them. The client save creates the users row; the hiver save
+        # finds it and adds the hiver row (see repository upsert).
+        await self._client_repo.save(
+            Client(
                 id=user_id,
                 email=request.email,
                 _password_hash=password_hash,
@@ -46,9 +49,9 @@ class RegisterUseCase:
                 phone=request.phone,
                 rating_as_client=Rating(5.0),
             )
-            await self._client_repo.save(user)
-        else:
-            user = Hiver(
+        )
+        await self._hiver_repo.save(
+            Hiver(
                 id=user_id,
                 email=request.email,
                 _password_hash=password_hash,
@@ -56,9 +59,9 @@ class RegisterUseCase:
                 phone=request.phone,
                 work_radius=WorkRadius.default(),
             )
-            await self._hiver_repo.save(user)
+        )
 
         return TokenResponse(
-            access_token=create_access_token(user_id, request.role),
+            access_token=create_access_token(user_id, "client"),
             refresh_token=create_refresh_token(user_id),
         )

@@ -14,6 +14,7 @@ from src.infrastructure.http.middleware.error_handler import (
     app_error_handler,
     unhandled_error_handler,
     validation_error_handler,
+    value_error_handler,
 )
 from src.infrastructure.http.rate_limit import limiter
 from src.infrastructure.http.routers import (
@@ -76,6 +77,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(ValidationError, validation_error_handler)
+app.add_exception_handler(ValueError, value_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth.router, prefix=settings.api_prefix)

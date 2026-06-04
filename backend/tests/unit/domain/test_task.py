@@ -2,6 +2,7 @@ import pytest
 
 from domain.entities.task import Task, TaskStatus
 from domain.errors.domain_errors import (
+    InvalidBudgetRangeError,
     InvalidVerticalError,
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
@@ -103,3 +104,11 @@ class TestTaskBudget:
 
     def test_midpoint_with_no_budget(self):
         assert make_task().budget_midpoint() is None
+
+    def test_max_below_min_rejected(self):
+        with pytest.raises(InvalidBudgetRangeError):
+            make_task(budget_min=Money.of(100), budget_max=Money.of(50))
+
+    def test_equal_min_and_max_allowed(self):
+        task = make_task(budget_min=Money.of(50), budget_max=Money.of(50))
+        assert task.budget_midpoint() == Money.of(50)

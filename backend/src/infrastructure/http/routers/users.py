@@ -38,45 +38,39 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=MeResponse)
 async def get_me(session: SessionDep, payload: UserPayloadDep) -> MeResponse:
-    """Return the currently authenticated user (role-aware)."""
-    user_id = payload["sub"]
-    if payload.get("role") == "hiver":
-        hiver = await PostgresHiverRepository(session).find_by_id(user_id)
-        if hiver is None:
-            raise HiverNotFoundError(user_id)
-        return MeResponse(
-            id=hiver.id,
-            email=hiver.email,
-            full_name=hiver.full_name,
-            role="hiver",
-            phone=hiver.phone,
-            avatar_url=hiver.avatar_url,
-            is_oauth=hiver.oauth_provider is not None,
-            bio=hiver.bio or "",
-            level=hiver.level,
-            xp_points=hiver.xp_points,
-            avg_rating=float(hiver.avg_rating.value),
-            completed_tasks=hiver.completed_tasks,
-            review_count=hiver.review_count,
-            is_available_now=hiver.is_available_now,
-            work_radius_km=hiver.work_radius.km,
-            skills=hiver.skills,
-        )
+    """Return the currently authenticated user with BOTH facets.
 
+    Unified accounts: every account is both client and hiver, so the response
+    carries the client stats and the hiver stats together.
+    """
+    user_id = payload["sub"]
     client = await PostgresClientRepository(session).find_by_id(user_id)
-    if client is None:
+    hiver = await PostgresHiverRepository(session).find_by_id(user_id)
+    base = client or hiver
+    if base is None:
         raise ClientNotFoundError(user_id)
+
     return MeResponse(
-        id=client.id,
-        email=client.email,
-        full_name=client.full_name,
-        role="client",
-        phone=client.phone,
-        avatar_url=client.avatar_url,
-        is_oauth=client.oauth_provider is not None,
-        rating_as_client=float(client.rating_as_client.value),
-        total_tasks=client.total_tasks,
-        review_count=client.review_count,
+        id=base.id,
+        email=base.email,
+        full_name=base.full_name,
+        role="both",
+        phone=base.phone,
+        avatar_url=base.avatar_url,
+        is_oauth=base.oauth_provider is not None,
+        # hiver facet
+        bio=(hiver.bio or "") if hiver else None,
+        level=hiver.level if hiver else None,
+        xp_points=hiver.xp_points if hiver else None,
+        avg_rating=float(hiver.avg_rating.value) if hiver else None,
+        completed_tasks=hiver.completed_tasks if hiver else None,
+        is_available_now=hiver.is_available_now if hiver else None,
+        work_radius_km=hiver.work_radius.km if hiver else None,
+        skills=hiver.skills if hiver else [],
+        # client facet
+        rating_as_client=float(client.rating_as_client.value) if client else None,
+        total_tasks=client.total_tasks if client else None,
+        review_count=client.review_count if client else None,
     )
 
 

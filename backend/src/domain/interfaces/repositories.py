@@ -104,6 +104,11 @@ class IReadableTaskRepository(ABC):
         is_urgent: bool | None = None,
         min_budget: float | None = None,
         max_budget: float | None = None,
+        q: str | None = None,
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_km: float | None = None,
+        sort: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> PaginatedResult[Task]: ...

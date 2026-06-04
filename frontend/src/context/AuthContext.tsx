@@ -9,7 +9,7 @@ import {
 } from "react";
 import { apiUrl, tokens } from "@/lib/api";
 import { authService } from "@/lib/services";
-import type { Me, Role, TokenResponse } from "@/types";
+import type { Me, TokenResponse } from "@/types";
 
 interface AuthContextValue {
   user: Me | null;
@@ -20,9 +20,8 @@ interface AuthContextValue {
     full_name: string;
     email: string;
     password: string;
-    role: Role;
   }) => Promise<void>;
-  loginWithProvider: (provider: "google" | "facebook", role?: Role) => void;
+  loginWithProvider: (provider: "google" | "facebook") => void;
   setSession: (t: TokenResponse) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => void;
@@ -60,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (body: { full_name: string; email: string; password: string; role: Role }) => {
+    async (body: { full_name: string; email: string; password: string }) => {
       tokens.set(await authService.register(body));
       setUser(await authService.me());
     },
@@ -72,9 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(await authService.me());
   }, []);
 
-  const loginWithProvider = useCallback((provider: "google" | "facebook", role: Role = "client") => {
+  const loginWithProvider = useCallback((provider: "google" | "facebook") => {
     // Full-page navigation: the provider redirects the browser back to /auth/callback.
-    window.location.href = apiUrl(`/auth/oauth/${provider}/login?role=${role}`);
+    // Unified accounts — no role to choose; the account gets both facets.
+    window.location.href = apiUrl(`/auth/oauth/${provider}/login`);
   }, []);
 
   const refresh = useCallback(async () => {

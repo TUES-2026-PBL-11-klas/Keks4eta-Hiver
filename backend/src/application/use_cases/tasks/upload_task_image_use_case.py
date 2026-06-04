@@ -1,4 +1,7 @@
 import uuid
+from io import BytesIO
+
+from PIL import Image, UnidentifiedImageError
 
 from src.application.dtos.task_dtos import TaskDetailResponse
 from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
@@ -53,6 +56,7 @@ class UploadTaskImageUseCase:
             raise BusinessRuleViolationError(
                 f"A task can have at most {MAX_IMAGES} images", "TOO_MANY_IMAGES"
             )
+        self._assert_decodable(data)
 
         key = f"{task_id}/{uuid.uuid4().hex}{ext}"
         url = await self._storage.upload(BUCKET, key, data, ctype)
@@ -60,3 +64,21 @@ class UploadTaskImageUseCase:
         task.image_urls.append(url)
         await self._task_repo.save(task)
         return await GetTaskUseCase(self._task_repo).execute(task_id)
+
+    @staticmethod
+    def _assert_decodable(data: bytes) -> None:
+        """Reject corrupt or truncated images before they reach storage.
+
+        ``verify()`` catches structural corruption; a second ``load()`` on a
+        fresh stream catches truncation that only surfaces during full decode
+        (verify leaves the file object unusable, so we must re-open).
+        """
+        try:
+            with Image.open(BytesIO(data)) as img:
+                img.verify()
+            with Image.open(BytesIO(data)) as img:
+                img.load()
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            raise BusinessRuleViolationError(
+                "Image is corrupt or truncated", "INVALID_IMAGE"
+            ) from exc

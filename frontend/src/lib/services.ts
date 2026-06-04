@@ -29,7 +29,7 @@ function qs(params: Record<string, unknown>): string {
 export const authService = {
   login: (email: string, password: string) =>
     api.post<TokenResponse>("/auth/login", { email, password }),
-  register: (body: { full_name: string; email: string; password: string; role: string }) =>
+  register: (body: { full_name: string; email: string; password: string }) =>
     api.post<TokenResponse>("/auth/register", body),
   me: () => api.get<Me>("/users/me"),
 };
@@ -40,6 +40,14 @@ export interface TaskSearchParams {
   is_urgent?: boolean;
   min_budget?: number;
   max_budget?: number;
+  /** Free-text over title / description / subcategory. */
+  q?: string;
+  /** Geo radius search — all three needed together. */
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
+  /** "recent" (default) | "distance" | "budget". */
+  sort?: "recent" | "distance" | "budget";
   page?: number;
   page_size?: number;
 }

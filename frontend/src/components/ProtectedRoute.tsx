@@ -2,18 +2,12 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ROUTES } from "@/constants/routes";
 import { Spinner } from "@/components/ui";
-import type { Role } from "@/types";
 import type { ReactNode } from "react";
 
-/** Gate a route behind authentication (and optionally a specific role). */
-export function ProtectedRoute({
-  children,
-  role,
-}: {
-  children: ReactNode;
-  role?: Role;
-}) {
-  const { isAuthenticated, loading, user } = useAuth();
+/** Gate a route behind authentication. Unified accounts can do everything, so
+ *  there is no per-role gating anymore — only "are you signed in?". */
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -26,10 +20,6 @@ export function ProtectedRoute({
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location.pathname }} />;
-  }
-
-  if (role && user?.role !== role) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
   return <>{children}</>;

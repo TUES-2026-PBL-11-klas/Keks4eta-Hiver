@@ -58,6 +58,8 @@ class CreateTaskUseCase:
             budget_min=float(task.budget_min.value) if task.budget_min else None,
             budget_max=float(task.budget_max.value) if task.budget_max else None,
             location_display=task.location.display_address if task.location else None,
+            latitude=task.location.latitude if task.location else None,
+            longitude=task.location.longitude if task.location else None,
             smart_answers=task.smart_answers,
             image_urls=task.image_urls,
             expires_at=task.expires_at,

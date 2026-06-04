@@ -49,7 +49,7 @@ export default function App() {
           <Route
             path={ROUTES.POST_TASK}
             element={
-              <ProtectedRoute role="client">
+              <ProtectedRoute>
                 <Animated><PostTask /></Animated>
               </ProtectedRoute>
             }

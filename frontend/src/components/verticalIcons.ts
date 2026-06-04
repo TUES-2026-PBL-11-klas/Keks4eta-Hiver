@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { SVGProps, ReactElement } from "react";
 import {
   CleanIcon,
   LearnIcon,
@@ -8,7 +8,7 @@ import {
   CalendarIcon,
 } from "@/components/icons";
 
-type IconComponent = (p: SVGProps<SVGSVGElement> & { size?: number }) => JSX.Element;
+type IconComponent = (p: SVGProps<SVGSVGElement> & { size?: number }) => ReactElement;
 
 /** Maps a task vertical to its line icon. */
 export const VERTICAL_ICON: Record<string, IconComponent> = {

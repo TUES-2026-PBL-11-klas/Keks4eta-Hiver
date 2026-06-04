@@ -65,6 +65,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST) | External API calls |
 | **@vis.gl/react-google-maps** | ≥1.8 | React wrapper for Google Maps + Places — pin-per-hiver map on Nearby Hivers and address autocomplete (captures lat/lng → PostGIS `location_point`) on Post-a-task; falls back to a free OpenStreetMap embed when keyless | Maps & geocoding (frontend) |
 | **python-multipart** | ≥0.0.30 | Parses `multipart/form-data` so FastAPI can accept file uploads | Task image uploads |
+| **Pillow** | ≥10.3 | Decodes uploaded images (`verify()` + `load()`) to reject corrupt/truncated files before they reach storage | Task image validation |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
 | **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
@@ -75,7 +76,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
 - PostGIS geospatial queries (`find_hivers_in_radius` stored function)
 - Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations (Supabase runs real Postgres, so the whole 001→017 chain applies normally)
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→019 chain applies normally)
 
 What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
 
@@ -87,10 +88,10 @@ Other Supabase / external services: **Supabase Storage** for task images (`IStor
 
 | Technology | Version | Why | What it does |
 |-----------|---------|-----|--------------|
-| **React 18** | 18.3.1 | Hooks, concurrent mode, massive ecosystem | UI framework |
+| **React 19** | 19.2.x | Hooks, concurrent mode, massive ecosystem | UI framework |
 | **React Router 6** | 6.23.1 | Client-side routing, no page reloads | Navigation between pages |
 | **TypeScript 5** | 5.4.5 | Type safety — catches API contract mismatches at compile time | Language layer |
-| **Vite 5** | 5.3.1 | Much faster than Webpack, native ES modules, instant HMR | Build tool & dev server |
+| **Vite 8** | 8.0.x | Rolldown-powered bundler, native ES modules, instant HMR (needs Node 20.19+/22.12+) | Build tool & dev server |
 | **CSS Modules** | built-in | Scoped styles per component, no global class name collisions | Component styling |
 | **Framer Motion** | ≥11.3 | Declarative animation — scroll-reveals, page transitions, modal enter/exit | Motion / animation |
 
@@ -203,12 +204,19 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 17 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 19 Alembic migrations that build the full schema from scratch in order.
 
 **SQLAlchemy Models (13 tables):**
 `users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
 
-**The 17 Migrations:**
+**Account model — unified (every account is both client and hiver):** one `users`
+row owns BOTH a `clients` row and a `hivers` row (keyed on `user_id`). Registration
+and OAuth create both facets; migration 019 backfills them for pre-existing accounts.
+Endpoints are no longer gated by a role claim — any authenticated user can post tasks
+*and* offer/work — with the rule that you cannot offer on your own task
+(`CANNOT_OFFER_ON_OWN_TASK`). The `users.role` column is retained but vestigial.
+
+**The 19 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -228,6 +236,8 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 | 015 | create_views | `hiver_earnings_monthly` view with window functions |
 | 016 | add_oauth_to_users | `password_hash` made nullable; `oauth_provider` + `oauth_id` columns; partial unique index on (provider, id) for social login |
 | 017 | enable_rls_and_secure_view | Enables Row Level Security (default-deny) on all 14 public tables; recreates `hiver_earnings_monthly` with `security_invoker = on` |
+| 018 | task_budget_range_check | `CHECK (budget_max IS NULL OR budget_min IS NULL OR budget_min <= budget_max)` on `tasks` — DB-level guard for the budget rule |
+| 019 | backfill_dual_role_profiles | Unified accounts: backfills the missing `clients`/`hivers` row for every user so each account has both facets |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -242,6 +252,12 @@ find_hivers_in_radius(lat, lng, radius_km, vertical)
 -- Only returns hivers where is_available_now = true
 -- Orders by distance ascending
 ```
+
+**Tasks-on-the-map search:** `GET /tasks/search` also does PostGIS radius search —
+`ST_DWithin(location_point, ST_MakePoint(lng,lat)::geography, radius_m)` with
+`sort=distance` via `ST_Distance`, free-text `q` (ILIKE over title/description/
+subcategory), and budget filters. Responses carry real `latitude/longitude`
+(read via `ST_Y/ST_X`) so the SPA can render a pin per task on the Find-tasks map.
 
 **Database View (migration 015):**
 ```sql
@@ -524,7 +540,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–017 Alembic migrations
+│           │   ├── migrations/versions/  001–019 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

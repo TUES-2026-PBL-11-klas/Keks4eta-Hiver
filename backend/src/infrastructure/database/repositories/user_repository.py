@@ -125,6 +125,18 @@ class PostgresClientRepository(IClientRepository):
                 client.rating_as_client = entity.rating_as_client.value
                 client.total_tasks = entity.total_tasks
                 client.review_count = entity.review_count
+            else:
+                # Unified accounts: the user row exists (created via the hiver
+                # facet) but has no client row yet — add it so this account can
+                # also post tasks.
+                self._session.add(
+                    ClientModel(
+                        user_id=entity.id,
+                        rating_as_client=entity.rating_as_client.value,
+                        total_tasks=entity.total_tasks,
+                        review_count=entity.review_count,
+                    )
+                )
         await self._session.flush()
         return entity
 
@@ -225,6 +237,23 @@ class PostgresHiverRepository(IHiverRepository):
                 hiver.completed_tasks = entity.completed_tasks
                 hiver.is_available_now = entity.is_available_now
                 hiver.work_radius_km = entity.work_radius.km
+            else:
+                # Unified accounts: the user row exists (created via the client
+                # facet) but has no hiver row yet — add it so this account can
+                # also offer on and do tasks.
+                self._session.add(
+                    HiverModel(
+                        user_id=entity.id,
+                        bio=entity.bio,
+                        xp_points=entity.xp_points,
+                        level=entity.level,
+                        avg_rating=entity.avg_rating.value,
+                        completed_tasks=entity.completed_tasks,
+                        review_count=entity.review_count,
+                        is_available_now=entity.is_available_now,
+                        work_radius_km=entity.work_radius.km,
+                    )
+                )
         await self._session.flush()
         return entity
 

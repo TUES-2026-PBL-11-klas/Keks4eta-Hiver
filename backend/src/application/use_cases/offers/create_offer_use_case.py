@@ -4,6 +4,7 @@ from src.domain.value_objects.money import Money
 from src.domain.errors.domain_errors import (
     TaskNotFoundError, HiverNotFoundError,
     OfferAlreadyExistsError, TaskAlreadyAcceptedError,
+    CannotOfferOnOwnTaskError,
 )
 from src.domain.interfaces.repositories import ITaskRepository, IOfferRepository, IHiverRepository
 from src.domain.services.event_bus import EventBus, notify
@@ -32,6 +33,10 @@ class CreateOfferUseCase:
         task = await self._task_repo.find_by_id(task_id)
         if task is None:
             raise TaskNotFoundError(task_id)
+
+        # Unified accounts can both post and work — but never on their own task.
+        if task.client_id == hiver_id:
+            raise CannotOfferOnOwnTaskError(task_id)
 
         if not task.is_open():
             raise TaskAlreadyAcceptedError(task_id)

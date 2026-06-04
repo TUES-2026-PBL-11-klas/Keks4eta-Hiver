@@ -60,23 +60,22 @@ class OAuthLoginUseCase:
             await self._hiver_repo.save(existing_hiver)
             return self._tokens(existing_hiver.id, "hiver")
 
-        # 3. New passwordless account in the requested role.
+        # 3. Brand-new passwordless account — create BOTH facets (unified
+        #    accounts), sharing one users row. The client save creates the user
+        #    + links the provider identity; the hiver save adds the hiver row.
         user_id = str(uuid.uuid4())
-        if info.role == "client":
-            await self._client_repo.save(
-                Client(
-                    id=user_id,
-                    email=info.email,
-                    _password_hash=None,
-                    full_name=info.full_name,
-                    avatar_url=info.avatar_url,
-                    oauth_provider=info.provider,
-                    oauth_id=info.oauth_id,
-                    rating_as_client=Rating(5.0),
-                )
+        await self._client_repo.save(
+            Client(
+                id=user_id,
+                email=info.email,
+                _password_hash=None,
+                full_name=info.full_name,
+                avatar_url=info.avatar_url,
+                oauth_provider=info.provider,
+                oauth_id=info.oauth_id,
+                rating_as_client=Rating(5.0),
             )
-            return self._tokens(user_id, "client")
-
+        )
         await self._hiver_repo.save(
             Hiver(
                 id=user_id,
@@ -89,7 +88,7 @@ class OAuthLoginUseCase:
                 work_radius=WorkRadius.default(),
             )
         )
-        return self._tokens(user_id, "hiver")
+        return self._tokens(user_id, "client")
 
     @staticmethod
     def _tokens(user_id: str, role: str) -> TokenResponse:

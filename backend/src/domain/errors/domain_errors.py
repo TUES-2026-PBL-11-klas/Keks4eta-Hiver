@@ -110,6 +110,16 @@ class OfferAlreadyExistsError(BusinessRuleViolationError):
         )
 
 
+class CannotOfferOnOwnTaskError(BusinessRuleViolationError):
+    """Unified accounts can both post and work — but not offer on themselves."""
+
+    def __init__(self, task_id: str):
+        super().__init__(
+            f"You cannot make an offer on your own task {task_id}",
+            "CANNOT_OFFER_ON_OWN_TASK",
+        )
+
+
 class ReviewAlreadySubmittedError(BusinessRuleViolationError):
     def __init__(self, reviewer_id: str, task_id: str):
         super().__init__(
@@ -131,6 +141,26 @@ class InvalidOfferPriceError(BusinessRuleViolationError):
         super().__init__(
             f"Offer price {price} is outside task budget range {budget_min}–{budget_max}",
             "INVALID_OFFER_PRICE",
+        )
+
+
+class MissingSmartAnswerError(BusinessRuleViolationError):
+    """A vertical-specific required answer was not supplied for a task."""
+
+    def __init__(self, vertical: str, field: str):
+        super().__init__(
+            f"{vertical.capitalize()} tasks require '{field}'",
+            "MISSING_SMART_ANSWER",
+        )
+
+
+class InvalidBudgetRangeError(BusinessRuleViolationError):
+    """The minimum budget exceeds the maximum budget."""
+
+    def __init__(self, budget_min: object, budget_max: object):
+        super().__init__(
+            f"Minimum budget {budget_min} cannot exceed maximum budget {budget_max}",
+            "INVALID_BUDGET_RANGE",
         )
 
 

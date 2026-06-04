@@ -1,4 +1,6 @@
 // ── Shared enums ────────────────────────────────────────────────────────────
+// Unified accounts: every account is both client and hiver. `Role` is kept only
+// for the legacy OAuth query param; the app no longer gates behaviour on it.
 export type Role = "client" | "hiver";
 
 export type Vertical = "home" | "learn" | "tech" | "care" | "move" | "events";
@@ -25,7 +27,8 @@ export interface Me {
   id: string;
   email: string;
   full_name: string;
-  role: Role;
+  /** Always "both" now (unified accounts) — kept for display only. */
+  role: string;
   phone?: string | null;
   avatar_url?: string | null;
   is_oauth: boolean;
@@ -55,6 +58,8 @@ export interface TaskSummary {
   budget_min?: number | null;
   budget_max?: number | null;
   location_display?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 

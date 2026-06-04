@@ -19,6 +19,11 @@ class SearchTasksUseCase:
         is_urgent: bool | None = None,
         min_budget: float | None = None,
         max_budget: float | None = None,
+        q: str | None = None,
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_km: float | None = None,
+        sort: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> PaginatedResult[TaskSummaryResponse]:
@@ -28,6 +33,11 @@ class SearchTasksUseCase:
             is_urgent=is_urgent,
             min_budget=min_budget,
             max_budget=max_budget,
+            q=q,
+            lat=lat,
+            lng=lng,
+            radius_km=radius_km,
+            sort=sort,
             page=page,
             page_size=page_size,
         )
@@ -42,6 +52,8 @@ class SearchTasksUseCase:
                 budget_min=float(t.budget_min.value) if t.budget_min else None,
                 budget_max=float(t.budget_max.value) if t.budget_max else None,
                 location_display=t.location.display_address if t.location else None,
+                latitude=t.location.latitude if t.location else None,
+                longitude=t.location.longitude if t.location else None,
                 created_at=t.created_at,
             )
             for t in result.items

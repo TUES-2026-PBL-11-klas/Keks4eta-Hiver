@@ -51,9 +51,18 @@ class Task:
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
-        from domain.errors.domain_errors import InvalidVerticalError
+        from domain.errors.domain_errors import (
+            InvalidBudgetRangeError,
+            InvalidVerticalError,
+        )
         if self.vertical not in VALID_VERTICALS:
             raise InvalidVerticalError(self.vertical)
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
+            raise InvalidBudgetRangeError(self.budget_min, self.budget_max)
 
     # ── State transitions (Encapsulation: only valid transitions allowed) ──
 

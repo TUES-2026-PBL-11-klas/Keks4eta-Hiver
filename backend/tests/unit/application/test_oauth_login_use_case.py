@@ -76,25 +76,31 @@ def repos():
 
 
 class TestOAuthLogin:
-    async def test_creates_new_client_when_unknown(self, repos):
+    async def test_new_account_creates_both_facets(self, repos):
         client_repo, hiver_repo = repos
         tokens = await OAuthLoginUseCase(client_repo, hiver_repo).execute(info())
 
+        # Unified accounts: a brand-new social account gets BOTH a client and a
+        # hiver profile sharing one user id; the role param is ignored.
         assert len(client_repo.saved) == 1
-        created = client_repo.saved[0]
-        assert isinstance(created, Client)
-        assert created.oauth_provider == "google"
-        assert created.password_hash is None  # passwordless account
+        assert len(hiver_repo.saved) == 1
+        client_created = client_repo.saved[0]
+        hiver_created = hiver_repo.saved[0]
+        assert isinstance(client_created, Client)
+        assert isinstance(hiver_created, Hiver)
+        assert client_created.id == hiver_created.id
+        assert client_created.oauth_provider == "google"
+        assert client_created.password_hash is None  # passwordless account
         assert decode_token(tokens.access_token)["role"] == "client"
 
-    async def test_creates_new_hiver_when_role_hiver(self, repos):
+    async def test_role_param_is_ignored_both_facets_created(self, repos):
         client_repo, hiver_repo = repos
-        tokens = await OAuthLoginUseCase(client_repo, hiver_repo).execute(
-            info(role="hiver", oauth_id="g-999", email="hiver@example.com")
+        await OAuthLoginUseCase(client_repo, hiver_repo).execute(
+            info(role="hiver", oauth_id="g-999", email="both@example.com")
         )
+        # Even with role="hiver", both facets are created (role is vestigial).
+        assert len(client_repo.saved) == 1
         assert len(hiver_repo.saved) == 1
-        assert isinstance(hiver_repo.saved[0], Hiver)
-        assert decode_token(tokens.access_token)["role"] == "hiver"
 
     async def test_logs_in_existing_oauth_identity_without_duplicating(self, repos):
         client_repo, hiver_repo = repos
