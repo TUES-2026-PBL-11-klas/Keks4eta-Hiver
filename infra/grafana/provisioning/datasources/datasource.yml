@@ -1,0 +1,11 @@
+# Grafana auto-provisioning: wire the Prometheus datasource on startup so the
+# observability stack works end-to-end out of the box (no manual UI setup).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true

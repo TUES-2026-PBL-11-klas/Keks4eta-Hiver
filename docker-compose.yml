@@ -55,8 +55,11 @@ services:
   grafana:
     image: grafana/grafana:latest
     volumes:
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+      # Auto-provisions the Prometheus datasource on startup.
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
     ports:
       - "3001:3000"
     environment:

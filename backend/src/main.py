@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import ValidationError
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -92,6 +93,10 @@ app.include_router(notifications.router, prefix=settings.api_prefix)
 app.include_router(messages.router, prefix=settings.api_prefix)
 app.include_router(disputes.router, prefix=settings.api_prefix)
 app.include_router(favorites.router, prefix=settings.api_prefix)
+
+# Prometheus metrics at /metrics (request count/latency/in-progress by handler).
+# This is the target the bundled Prometheus config scrapes (infra/prometheus).
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 
 @app.get("/health", tags=["health"])

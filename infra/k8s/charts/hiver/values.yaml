@@ -1,5 +1,13 @@
 replicaCount: 2
 
+nameOverride: ""
+fullnameOverride: ""
+
+# Name of a pre-created Kubernetes Secret holding the app's runtime secrets
+# (DATABASE_URL, REDIS_URL, JWT_SECRET_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET).
+# Created out-of-band, e.g. `kubectl create secret generic hiver-secrets --from-env-file=.env`.
+secretName: hiver-secrets
+
 image:
   repository: hiver/backend
   tag: latest

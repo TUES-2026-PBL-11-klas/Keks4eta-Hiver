@@ -34,7 +34,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 2 | Domain Layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database Migrations | ✅ Done | `c12b244` |
 | 4 | API Layer | ✅ Done | `b0b0447` |
-| 5 | Tests + CI/CD + Observability | ⏳ In progress — domain unit tests done (97, all green); CI/templates/CODEOWNERS/dependabot in place; use-case + integration tests next | — |
+| 5 | Tests + CI/CD + Observability | ✅ Done — 294 unit tests + use-case + HTTP integration tests (green); CI (ruff/mypy/pytest≥80%/pip-audit/trufflehog/docker); Prometheus `/metrics` wired + Grafana datasource provisioned + Helm chart complete | — |
 | 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
 | 7 | Marketplace Completion | 🔄 In progress — functional escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: fuller test coverage & polish | — |
 
@@ -407,13 +407,13 @@ earnings past it.
 
 ---
 
-### Phase 5 — Tests, CI/CD, Observability ⏳ Repo infra in place; domain + first use-case tests green, integration tests next
+### Phase 5 — Tests, CI/CD, Observability ✅ Tests green, CI gating, observability wired; live cloud deploy is the only remainder
 
 **What it is:** Making the project production-ready and proving it works automatically.
 
 **Already in place:**
 - **GitHub Actions CI** — `.github/workflows/ci.yml` (lint + mypy strict + pytest+coverage gate ≥80% + pip-audit + trufflehog + docker build with 150MB size cap)
-- **GitHub Actions CD** — `.github/workflows/cd.yml` (docker push + Helm upgrade on `main`)
+- **GitHub Actions CD** — `.github/workflows/cd.yml` (docker push + Helm upgrade on `main`). Workflow + chart are complete; **actually deploying needs a cluster + `REGISTRY_USER`/`REGISTRY_PASSWORD` secrets + a cluster-auth step + a `hiver-secrets` Secret** — see README "Deployment".
 - **PR template** — enforces doc-sync checklist (`.github/pull_request_template.md`)
 - **Issue templates** — bug + feature, with subject/phase tagging (`.github/ISSUE_TEMPLATE/`)
 - **CODEOWNERS** — auto-request reviews per path
@@ -432,15 +432,15 @@ earnings past it.
   via `payment_factory.get_payment_port()`) holds the offer price on accept, captures/releases on
   completion, and refunds on cancel; `GET /payments/tasks/{id}` exposes escrow state to the client
   and assigned hiver. No external Stripe account required.
-- **Domain unit tests** — 97 tests, all green (`backend/tests/unit/domain/`): value objects (Money, Rating, WorkRadius, Location invariants + Haversine) and entity state machines (Task/Offer/Transaction lifecycles, Review blind-reveal, User Client/Hiver polymorphism + level-ups). Pure Python, no DB. `conftest.py` puts `src` on `sys.path`. Run with `pytest tests/unit/domain -o addopts=""` (coverage gate disabled until the suite is fuller).
+- **Test suite — 294 unit tests (green) + HTTP integration tests.** Unit: domain value objects/entities (pure Python) **plus** application use cases with in-memory fake repos (auth, offers, tasks, profiles, favorites, task-boost, conversations, image validation). Integration: `tests/integration/test_http_endpoints.py` drives the FastAPI app with `TestClient` (offers + favorites flows). Run units with `pytest tests/unit -q --no-cov`; full suite with `pytest --cov=src --cov-fail-under=80` (needs the Postgres + Redis containers).
+- **Observability wired** — the backend exposes **`/metrics`** via `prometheus-fastapi-instrumentator` (`src/main.py`); `infra/prometheus/prometheus.yml` scrapes the compose `backend` service; Grafana auto-provisions the Prometheus datasource (`infra/grafana/provisioning/`). Alert rules in `infra/prometheus/alerts.yml`.
+- **Kubernetes Helm chart complete** — `infra/k8s/charts/hiver/` now has `Chart.yaml`, `_helpers.tpl`, and Deployment/Service/HPA/Ingress templates consuming `values.yaml` (2–10 replicas, rolling updates, CPU-based HPA, secret via `envFrom`). Validate with `helm lint` / `helm template`.
 
-**Still planned:**
-- **More use-case tests** — application use cases with in-memory fake repositories (first one — `OAuthLoginUseCase`, in `tests/unit/application/` — is already green)
-- **Integration tests** — repositories against a real test database, API HTTP tests
-- **Coverage target** — 80% minimum (already enforced by `pytest-cov` in CI; suite is empty)
-- **Kubernetes deployment** — Helm chart with 2–10 replicas, rolling updates, zero downtime
-- **Prometheus dashboards** — latency p50/p99, error rate, requests per second, escrow release lag
-- **Alert rules already configured:**
+**Still planned (live deploy + polish, not blocking the grade):**
+- **Actual cloud deploy** — provision a cluster + registry creds + a cluster-auth step in `cd.yml` + a `hiver-secrets` Secret (README "Deployment"). Terraform skeleton under `infra/terraform/` is unapplied.
+- **Grafana dashboards** — the datasource is provisioned; ready-made dashboard JSON (latency p50/p99, error rate, RPS) is still added via the UI.
+- **Real Stripe + FCM** — mock payment adapter and in-app notifications are the working defaults.
+- **Alert rules already configured (need an Alertmanager to route):**
   - HTTP 5xx error rate > 5% → critical
   - DB connection pool > 80% → warning
   - Escrow release job stale > 2 hours → critical

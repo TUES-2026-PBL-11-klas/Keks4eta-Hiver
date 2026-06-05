@@ -3,6 +3,7 @@
 A two-sided task marketplace — clients post real-world tasks (cleaning, tutoring, tech help, moving, etc.) and **hivers** bid on them. Built as a school project, graded across 4 subjects.
 
 > **Full reference:** see [`PROGRESS.md`](./PROGRESS.md) for the deep-dive (tech rationales, phase breakdowns, design patterns, gap analysis).
+> **Defending the project?** [`docs/DEFENCE.md`](./docs/DEFENCE.md) is the revise-from-this guide: what the site is, why each tech was chosen, and per-subject talking points + likely questions for РС / ООП / БД / ВОТ.
 > **For Claude Code contributors:** see [`CLAUDE.md`](./CLAUDE.md) for repo conventions (Clean Architecture rules, doc-sync rule).
 
 ## Phase Status
@@ -13,10 +14,10 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 2 | Domain layer (OOP) | ✅ Done | `05b3bd1` |
 | 3 | Database migrations + seed | ✅ Done | `c12b244` |
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
-| 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
+| 5 | Tests + CI/CD + observability | ✅ Done — 294 unit tests + use-case + HTTP integration tests (green); GitHub Actions CI (ruff + mypy --strict + pytest≥80% cov + pip-audit + trufflehog + Docker build); Prometheus `/metrics` wired + Grafana datasource auto-provisioned | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
 | 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅, favorites (save tasks/hivers) ✅, task promotion (pay-to-feature) ✅, chat inbox (conversations list + unread) ✅ | — |
-| 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
+| 8 | Cloud deploy | 🔄 In progress — Helm chart + CD workflow written; **needs a cluster + registry/secrets to actually deploy** (see "Deployment" below) | — |
 
 ## Tech Stack (short)
 
@@ -33,9 +34,10 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Storage | Supabase Storage (task images + profile avatars); Pillow validates image integrity before upload |
 | Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — task pins on Find-tasks & hiver pins on Nearby Hivers, address autocomplete on Post-a-task; keyless OSM fallback |
 | Frontend | React 19 + TypeScript 5 + Vite 8 + Framer Motion (responsive web app) |
-| Container | Docker (multi-stage) + docker-compose |
-| Infra (target) | Kubernetes + Helm + Terraform |
-| Observability | Prometheus + Grafana |
+| Container | Docker (multi-stage, non-root, <150 MB) + docker-compose |
+| Infra | Kubernetes Helm chart (`infra/k8s/charts/hiver`); Terraform skeleton (`infra/terraform`) |
+| Observability | Prometheus (scrapes app `/metrics`) + Grafana (datasource auto-provisioned) |
+| CI/CD | GitHub Actions — CI on PRs (lint/type/test/security/docker), CD on push-to-main (Helm deploy; needs cluster) |
 | Package mgr | `uv` (Python), `npm` (frontend) |
 
 Rationales for every choice are in `PROGRESS.md`.
@@ -51,12 +53,12 @@ hiver/
 │   │   ├── infrastructure/    database (models, migrations 001–022, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
-│   ├── tests/                 unit (domain) + use-case tests
+│   ├── tests/                 unit (domain + use-case) + HTTP integration tests
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── frontend/          Vite + React + TypeScript
-├── infra/             Prometheus / Grafana / (planned) Terraform + Helm
-├── docs/              AI decisions log, architecture notes
+├── infra/             Prometheus + Grafana, Kubernetes Helm chart, Terraform skeleton
+├── docs/              defence prep, cloud setup, AI decisions log
 ├── PROGRESS.md        long-form project reference
 ├── CLAUDE.md          conventions for Claude Code contributors
 ├── docker-compose.yml
@@ -131,7 +133,9 @@ cd backend
 pip install uv
 uv sync --dev
 pre-commit install
-pytest                          # tests not yet written (Phase 5)
+ruff check src && mypy src --strict          # lint + types (CI gates on these)
+pytest tests/unit -q --no-cov                # 294 fast unit tests (no DB needed)
+pytest --cov=src --cov-fail-under=80         # full suite incl. HTTP integration (needs the Postgres + Redis containers up)
 ```
 
 ```bash
@@ -152,6 +156,7 @@ npm run dev                     # http://localhost:5173
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET    | `/health` | – | Health check (root, no prefix) |
+| GET    | `/metrics` | – | Prometheus metrics (root, no prefix; request count/latency by handler) |
 | POST   | `/auth/register` | – | Sign up — creates a unified account (client + hiver); **rate-limited 5/min/IP** |
 | POST   | `/auth/login` | – | Get JWT access + refresh — **rate-limited 10/min/IP** |
 | POST   | `/auth/refresh` | – | Exchange refresh token for a fresh token pair |
@@ -209,7 +214,32 @@ subscriber persists to `notification_log`; the SPA polls the unread count and sh
 Task image uploads are live on **real Supabase Storage** (`POST /tasks/{id}/images` → public
 `task-images` bucket; owners add photos from the task page).
 
-Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kubernetes Helm chart, real Stripe webhook handler, real push (FCM) adapter.
+**Still scaffolded (not production-wired):** real Stripe charges + webhook handler (mock adapter is the default), real push/FCM (in-app notifications work today), and the actual cloud deploy (chart + CD exist — see Deployment).
+
+## Observability
+
+`docker compose up` brings up Prometheus (`:9090`) and Grafana (`:3001`, admin/admin). The
+backend exposes **`/metrics`** (via `prometheus-fastapi-instrumentator`); Prometheus scrapes the
+compose `backend` service and Grafana auto-loads the Prometheus datasource. To see metrics flow,
+run the backend **as the compose service** (`docker compose up backend`) so the `backend:8000`
+target resolves — the host-run dev server (Getting Started) is reachable at `localhost:8000` but
+not at the `backend` hostname Prometheus uses.
+
+## Deployment
+
+CI/CD is GitHub Actions:
+- **CI** (`.github/workflows/ci.yml`) runs on PRs to `main`/`develop`: ruff, `mypy --strict`,
+  `pytest --cov-fail-under=80` (with Postgres + Redis services), `pip-audit`, trufflehog, and a
+  Docker build with a <150 MB size gate.
+- **CD** (`.github/workflows/cd.yml`) runs on push to `main`: builds + pushes the image and runs
+  `helm upgrade --install` against the chart in `infra/k8s/charts/hiver`.
+
+To make CD actually deploy you must provide: a container registry (`REGISTRY_USER` /
+`REGISTRY_PASSWORD` repo secrets), a Kubernetes cluster the runner can reach (add a kubeconfig /
+cluster-auth step to `cd.yml`), and a `hiver-secrets` Secret in the cluster holding `DATABASE_URL`,
+`REDIS_URL`, `JWT_SECRET_KEY`, `STRIPE_*` (e.g. `kubectl create secret generic hiver-secrets
+--from-env-file=.env`). Validate the chart locally with `helm lint infra/k8s/charts/hiver` and
+`helm template hiver infra/k8s/charts/hiver`.
 
 ## Graded Subjects
 
@@ -218,4 +248,4 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
 | **БД** (Databases) | 22 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
-| **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |
+| **ВОТ** (Virtualization & Cloud) | Multi-stage Docker (<150 MB, non-root), docker-compose, Kubernetes Helm chart (Deployment/Service/HPA/Ingress), GitHub Actions CI/CD, Prometheus `/metrics` + Grafana, Terraform skeleton |
