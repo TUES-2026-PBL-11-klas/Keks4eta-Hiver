@@ -488,3 +488,55 @@ class TestDependencyFunctions:
 
         bus = await get_event_bus(_FakeSession())
         assert NOTIFY_EVENT in bus._handlers
+
+
+# ── Favorites ─────────────────────────────────────────────────────────────────
+
+
+class TestFavoritesRouter:
+    def test_add_favorite_task(self, client: TestClient) -> None:
+        r = client.post(
+            f"{PREFIX}/favorites",
+            json={"target_type": "task", "target_id": "task-1"},
+        )
+        assert r.status_code < 600
+
+    def test_add_favorite_hiver(self, client: TestClient) -> None:
+        r = client.post(
+            f"{PREFIX}/favorites",
+            json={"target_type": "hiver", "target_id": "hiver-1"},
+        )
+        assert r.status_code < 600
+
+    def test_add_favorite_invalid_target_type(self, client: TestClient) -> None:
+        r = client.post(
+            f"{PREFIX}/favorites",
+            json={"target_type": "banana", "target_id": "x-1"},
+        )
+        assert r.status_code == 422
+
+    def test_add_favorite_missing_body(self, client: TestClient) -> None:
+        r = client.post(f"{PREFIX}/favorites", json={})
+        assert r.status_code == 422
+
+    def test_remove_favorite_task(self, client: TestClient) -> None:
+        r = client.delete(f"{PREFIX}/favorites/task/task-1")
+        assert r.status_code < 600
+
+    def test_remove_favorite_invalid_target_type(self, client: TestClient) -> None:
+        r = client.delete(f"{PREFIX}/favorites/banana/x-1")
+        assert r.status_code == 422
+
+    def test_list_favorite_tasks_empty(self, client: TestClient) -> None:
+        r = client.get(f"{PREFIX}/favorites/tasks")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_list_favorite_hivers_empty(self, client: TestClient) -> None:
+        r = client.get(f"{PREFIX}/favorites/hivers")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_list_favorite_ids(self, client: TestClient) -> None:
+        r = client.get(f"{PREFIX}/favorites/ids")
+        assert r.status_code < 600
