@@ -45,7 +45,7 @@
 .input:focus {
   border-color: var(--honey);
   background: var(--card-2);
-  box-shadow: 0 0 0 4px rgba(238, 127, 34, 0.14);
+  box-shadow: 0 0 0 4px rgb(238, 127, 34);
 }
 
 .left,

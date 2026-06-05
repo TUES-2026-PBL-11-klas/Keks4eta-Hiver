@@ -31,7 +31,7 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--honey, #ee7f22);
+  background: var(--honey,rgb(238, 127, 34));
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -69,7 +69,7 @@
 .markAll {
   border: none;
   background: none;
-  color: var(--honey, #ee7f22);
+  color: var(--honey,rgb(238, 127, 34));
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -105,7 +105,7 @@
 }
 
 .unread {
-  background: color-mix(in srgb, var(--honey, #ee7f22) 8%, transparent);
+  background: color-mix(in srgb, var(--honey,rgb(238, 127, 34)) 8%, transparent);
 }
 .unread .itemTitle::before {
   content: "";
@@ -114,7 +114,7 @@
   height: 7px;
   margin-right: 7px;
   border-radius: 999px;
-  background: var(--honey, #ee7f22);
+  background: var(--honey,rgb(238, 127, 34));
   vertical-align: middle;
 }
 
