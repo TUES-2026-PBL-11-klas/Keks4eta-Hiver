@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, Query, UploadFile
 
 from src.application.dtos.review_dtos import ReviewResponse, SubmitReviewRequest
 from src.application.dtos.task_dtos import (
+    BoostTaskResponse,
     CreateTaskRequest,
     TaskDetailResponse,
     TaskSummaryResponse,
@@ -12,6 +13,7 @@ from src.application.use_cases.reviews.list_reviews_use_case import (
 from src.application.use_cases.reviews.submit_review_use_case import (
     SubmitReviewUseCase,
 )
+from src.application.use_cases.tasks.boost_task_use_case import BoostTaskUseCase
 from src.application.use_cases.tasks.complete_task_use_case import (
     CancelTaskUseCase,
     CompleteTaskUseCase,
@@ -61,6 +63,11 @@ async def search_tasks(
     is_urgent: bool | None = Query(None),
     min_budget: float | None = Query(None, ge=0.0),
     max_budget: float | None = Query(None, ge=0.0),
+    q: str | None = Query(None, description="Free-text over title/description/subcategory"),
+    lat: float | None = Query(None, ge=-90.0, le=90.0),
+    lng: float | None = Query(None, ge=-180.0, le=180.0),
+    radius_km: float | None = Query(None, gt=0.0, le=100.0),
+    sort: str | None = Query(None, description="recent|distance|budget (default recent)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ) -> PaginatedResult[TaskSummaryResponse]:
@@ -71,6 +78,11 @@ async def search_tasks(
         is_urgent=is_urgent,
         min_budget=min_budget,
         max_budget=max_budget,
+        q=q,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+        sort=sort,
         page=page,
         page_size=page_size,
     )
@@ -146,6 +158,20 @@ async def cancel_task(
         event_bus=bus,
     )
     return await use_case.execute(task_id=task_id, actor_id=client.id)
+
+
+@router.post("/{task_id}/boost", response_model=BoostTaskResponse)
+async def boost_task(
+    task_id: str,
+    session: SessionDep,
+    client: ClientDep,
+) -> BoostTaskResponse:
+    """Owner pays to feature their task atop search for a week (mock-charged)."""
+    use_case = BoostTaskUseCase(
+        task_repo=PostgresTaskRepository(session),
+        payment_port=get_payment_port(),
+    )
+    return await use_case.execute(task_id=task_id, client_id=client.id)
 
 
 @router.post("/{task_id}/images", response_model=TaskDetailResponse)

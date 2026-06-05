@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
-from domain.value_objects.money import Money
-
+from src.domain.value_objects.money import Money
 
 # ── Payment Port (Adapter pattern target) ───────────────────────────────────
 
@@ -42,7 +43,7 @@ class NotificationPayload:
     recipient_id: str
     title: str
     body: str
-    data: dict
+    data: dict[str, Any]
 
 
 class INotificationPort(ABC):
@@ -64,6 +65,9 @@ class IStoragePort(ABC):
     """
     Abstracts object storage (Supabase Storage, Cloudflare R2, S3).
     """
+
+    async def ensure_bucket(self, bucket: str, public: bool = True) -> None:  # noqa: B027
+        """Optionally ensure the bucket exists. No-op by default."""
 
     @abstractmethod
     async def upload(self, bucket: str, key: str, data: bytes, content_type: str) -> str:

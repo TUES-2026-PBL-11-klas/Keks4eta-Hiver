@@ -1,18 +1,20 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
 
-from domain.value_objects.money import Money
-from domain.value_objects.location import Location
-from domain.errors.domain_errors import (
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
+
+from src.domain.errors.domain_errors import (
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
     UnauthorizedActionError,
 )
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     OPEN = "open"
     ACCEPTED = "accepted"
     IN_PROGRESS = "in_progress"
@@ -32,6 +34,7 @@ class Task:
     OOP: Encapsulation — status transitions are enforced via methods,
     never by direct assignment from outside the class.
     """
+
     id: str
     client_id: str
     vertical: str
@@ -44,16 +47,28 @@ class Task:
     budget_max: Money | None = None
     is_urgent: bool = False
     location: Location | None = None
-    smart_answers: dict = field(default_factory=dict)
+    smart_answers: dict[str, Any] = field(default_factory=dict)
     image_urls: list[str] = field(default_factory=list)
     expires_at: datetime | None = None
+    # Paid promotion: while now < featured_until the task is pinned atop search.
+    featured_until: datetime | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self) -> None:
-        from domain.errors.domain_errors import InvalidVerticalError
+        from src.domain.errors.domain_errors import (
+            InvalidBudgetRangeError,
+            InvalidVerticalError,
+        )
+
         if self.vertical not in VALID_VERTICALS:
             raise InvalidVerticalError(self.vertical)
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
+            raise InvalidBudgetRangeError(self.budget_min, self.budget_max)
 
     # ── State transitions (Encapsulation: only valid transitions allowed) ──
 
@@ -106,6 +121,34 @@ class Task:
 
     def is_completed(self) -> bool:
         return self.status == TaskStatus.COMPLETED
+
+    def feature(self, days: int) -> None:
+        """Pay-to-promote: pin this task atop search for `days`.
+
+        Extends from an existing active window if there is one, so buying twice
+        stacks rather than shortening the promotion.
+        """
+        from datetime import timedelta
+
+        base = datetime.now(UTC)
+        if self.featured_until is not None and self.is_featured():
+            base = self.featured_until
+            if base.tzinfo is None:
+                base = base.replace(tzinfo=UTC)
+        self.featured_until = base + timedelta(days=days)
+        self._touch()
+
+    def is_featured(self, now: datetime | None = None) -> bool:
+        if self.featured_until is None:
+            return False
+        ref = now or datetime.now(UTC)
+        exp = self.featured_until
+        # Tolerate naive datetimes (some drivers/paths return tz-naive values).
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=UTC)
+        return exp > ref
 
     def budget_midpoint(self) -> Money | None:
         if self.budget_min and self.budget_max:

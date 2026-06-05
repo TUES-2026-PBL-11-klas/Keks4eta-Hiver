@@ -1,6 +1,6 @@
+from src.application.dtos.payment_dtos import EscrowResponse
 from src.domain.errors.domain_errors import TaskNotFoundError, UnauthorizedActionError
 from src.domain.interfaces.repositories import ITaskRepository, ITransactionRepository
-from src.application.dtos.payment_dtos import EscrowResponse
 
 
 class GetEscrowUseCase:

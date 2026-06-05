@@ -58,12 +58,15 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **GeoAlchemy2** | ≥0.15 | Maps PostGIS `Geography(POINT)` columns to SQLAlchemy ORM models | Geo ORM columns |
 | **Redis 7** | external | Fast in-memory store for sessions and rate limiting | Cache layer |
 | **python-jose** | ≥3.3 | Encodes and decodes JWT tokens | Auth token generation |
-| **passlib[bcrypt]** | ≥1.7 | Hashes passwords with bcrypt — never stores plain text | Password security |
+| **pwdlib[argon2,bcrypt]** | ≥0.2 | Hashes passwords with Argon2 (bcrypt fallback for legacy hashes) — never stores plain text | Password security |
+| **Pillow** | ≥10.3 | Decodes uploaded images to reject corrupt/truncated files (task photos + avatars) before storage | Image validation |
 | **Authlib** | ≥1.3 | OAuth 2.0 / OIDC client for Google + Facebook social login (infrastructure only) | Social login |
 | **itsdangerous** | ≥2.2 | Signs the short-lived session cookie that carries OAuth state across the provider round-trip | OAuth state signing |
-| **Stripe** | ≥9.0 | Payment intents with manual capture for escrow hold/release | Payments |
-| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST, Google Maps) | External API calls |
+| **Stripe** | ≥9.0 | Payment-intent adapter for escrow (optional) — escrow runs on a **mock** adapter by default; `payment_factory` selects which | Payments |
+| **httpx** | ≥0.27 | Async HTTP client for calling external APIs (Supabase Storage REST) | External API calls |
+| **@vis.gl/react-google-maps** | ≥1.8 | React wrapper for Google Maps + Places — pin-per-hiver map on Nearby Hivers and address autocomplete (captures lat/lng → PostGIS `location_point`) on Post-a-task; falls back to a free OpenStreetMap embed when keyless | Maps & geocoding (frontend) |
 | **python-multipart** | ≥0.0.30 | Parses `multipart/form-data` so FastAPI can accept file uploads | Task image uploads |
+| **Pillow** | ≥10.3 | Decodes uploaded images (`verify()` + `load()`) to reject corrupt/truncated files before they reach storage | Task image validation |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
 | **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
@@ -74,7 +77,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 The main database is **plain PostgreSQL, hosted on Supabase** as managed Postgres (reached through its pgbouncer pooler — hence `DATABASE_USE_POOLER`). Supabase here is just a *managed Postgres host*, not a replacement for Postgres — so everything the Databases grade needs works unchanged:
 - PostGIS geospatial queries (`find_hivers_in_radius` stored function)
 - Full SQL control for PL/pgSQL triggers, stored procedures, and window-function views
-- Alembic migrations (Supabase runs real Postgres, so the whole 001→017 chain applies normally)
+- Alembic migrations (Supabase runs real Postgres, so the whole 001→022 chain applies normally)
 
 What we deliberately **do not** use is Supabase's auto-generated data API (PostgREST) or its client SDK — the FastAPI backend owns all data access and business rules. Supabase exposes the `public` schema through that API by default, so migration 017 locks it down with Row Level Security (default-deny) to keep it from bypassing the backend.
 
@@ -86,10 +89,10 @@ Other Supabase / external services: **Supabase Storage** for task images (`IStor
 
 | Technology | Version | Why | What it does |
 |-----------|---------|-----|--------------|
-| **React 18** | 18.3.1 | Hooks, concurrent mode, massive ecosystem | UI framework |
+| **React 19** | 19.2.x | Hooks, concurrent mode, massive ecosystem | UI framework |
 | **React Router 6** | 6.23.1 | Client-side routing, no page reloads | Navigation between pages |
 | **TypeScript 5** | 5.4.5 | Type safety — catches API contract mismatches at compile time | Language layer |
-| **Vite 5** | 5.3.1 | Much faster than Webpack, native ES modules, instant HMR | Build tool & dev server |
+| **Vite 8** | 8.0.x | Rolldown-powered bundler, native ES modules, instant HMR (needs Node 20.19+/22.12+) | Build tool & dev server |
 | **CSS Modules** | built-in | Scoped styles per component, no global class name collisions | Component styling |
 | **Framer Motion** | ≥11.3 | Declarative animation — scroll-reveals, page transitions, modal enter/exit | Motion / animation |
 
@@ -202,12 +205,19 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 ### Phase 3 — Database Migrations ✅
 **Commit:** `c12b244`
 
-**What it is:** SQLAlchemy ORM models mapping to database tables, plus 17 Alembic migrations that build the full schema from scratch in order.
+**What it is:** SQLAlchemy ORM models mapping to database tables, plus 22 Alembic migrations that build the full schema from scratch in order.
 
-**SQLAlchemy Models (13 tables):**
-`users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`
+**SQLAlchemy Models (14 tables):**
+`users`, `clients`, `hivers`, `skills`, `hiver_skills` (join), `tasks`, `offers`, `transactions`, `reviews`, `messages`, `disputes`, `boosts`, `notification_log`, `favorites`
 
-**The 17 Migrations:**
+**Account model — unified (every account is both client and hiver):** one `users`
+row owns BOTH a `clients` row and a `hivers` row (keyed on `user_id`). Registration
+and OAuth create both facets; migration 019 backfills them for pre-existing accounts.
+Endpoints are no longer gated by a role claim — any authenticated user can post tasks
+*and* offer/work — with the rule that you cannot offer on your own task
+(`CANNOT_OFFER_ON_OWN_TASK`). The `users.role` column is retained but vestigial.
+
+**The 22 Migrations:**
 | # | Migration | Creates |
 |---|-----------|---------|
 | 001 | create_extensions | uuid-ossp, pgcrypto, PostGIS |
@@ -227,6 +237,11 @@ All 5 SOLID principles, Abstraction, Encapsulation, Inheritance, Polymorphism, G
 | 015 | create_views | `hiver_earnings_monthly` view with window functions |
 | 016 | add_oauth_to_users | `password_hash` made nullable; `oauth_provider` + `oauth_id` columns; partial unique index on (provider, id) for social login |
 | 017 | enable_rls_and_secure_view | Enables Row Level Security (default-deny) on all 14 public tables; recreates `hiver_earnings_monthly` with `security_invoker = on` |
+| 018 | task_budget_range_check | `CHECK (budget_max IS NULL OR budget_min IS NULL OR budget_min <= budget_max)` on `tasks` — DB-level guard for the budget rule |
+| 019 | backfill_dual_role_profiles | Unified accounts: backfills the missing `clients`/`hivers` row for every user so each account has both facets |
+| 020 | hiver_location_display | Adds `location_display` to `hivers` — the human-readable address shown next to the PostGIS `location_point`, set from the profile Settings page |
+| 021 | create_favorites | `favorites` table (user_id, target_type task\|hiver, target_id) with a unique save constraint; RLS enabled (default-deny) like 017 |
+| 022 | task_featured_until | Adds indexed `featured_until` to `tasks` — paid promotion window; search pins currently-featured tasks first |
 
 **PL/pgSQL Triggers (migration 014):**
 - `trg_*_updated_at` — Auto-updates `updated_at` timestamp on all tables
@@ -241,6 +256,12 @@ find_hivers_in_radius(lat, lng, radius_km, vertical)
 -- Only returns hivers where is_available_now = true
 -- Orders by distance ascending
 ```
+
+**Tasks-on-the-map search:** `GET /tasks/search` also does PostGIS radius search —
+`ST_DWithin(location_point, ST_MakePoint(lng,lat)::geography, radius_m)` with
+`sort=distance` via `ST_Distance`, free-text `q` (ILIKE over title/description/
+subcategory), and budget filters. Responses carry real `latitude/longitude`
+(read via `ST_Y/ST_X`) so the SPA can render a pin per task on the Find-tasks map.
 
 **Database View (migration 015):**
 ```sql
@@ -333,11 +354,12 @@ earnings past it.
 | POST | /auth/login | None | Get access + refresh tokens — **rate-limited 10/min/IP** |
 | POST | /tasks | Client JWT | Post a new task |
 | GET | /tasks | Client JWT | List my tasks (paginated) |
-| GET | /tasks/search | None | Public search — vertical / status / urgency / budget filters |
+| GET | /tasks/search | None | Public search — vertical / status / urgency / budget / free-text `q` / PostGIS `lat,lng,radius_km` / `sort` (carries lat,lng for map pins) |
 | GET | /tasks/{id} | None | Get task details |
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
 | POST | /tasks/{id}/complete | Client JWT | Mark task done |
 | POST | /tasks/{id}/cancel | Client JWT | Cancel non-completed task |
+| POST | /tasks/{id}/boost | Client JWT | Pay to feature the task atop search for 7 days (mock-charged) |
 | POST | /tasks/{id}/images | Client JWT | Upload a task photo (Supabase Storage) |
 | POST | /tasks/{id}/reviews | Auth | Submit review (blind-reveal via DB trigger) |
 | GET | /tasks/{id}/reviews | None | List task reviews (`only_revealed=true` by default) |
@@ -346,6 +368,7 @@ earnings past it.
 | POST | /tasks/{id}/offers/{id}/accept | Client JWT | Accept a bid |
 | GET | /tasks/{id}/messages | Auth | Chat thread (client + assigned hiver) |
 | POST | /tasks/{id}/messages | Auth | Send a chat message |
+| GET | /conversations | Auth | Chat inbox — one row per task thread (last message + unread) |
 | GET | /tasks/{id}/disputes | Auth | The task's dispute, if any |
 | POST | /tasks/{id}/disputes | Auth | Open a dispute (locks escrow) |
 | POST | /tasks/{id}/disputes/resolve | Auth | Resolve by concession (release/refund) |
@@ -357,11 +380,19 @@ earnings past it.
 | POST | /notifications/read-all | Auth | Mark all read |
 | GET | /users/{id}/reviews | None | All revealed reviews received by user |
 | GET | /users/clients/{id} | None | View client profile |
-| GET | /users/hivers/{id} | None | View hiver profile |
+| GET | /users/hivers/{id} | None | View hiver profile (incl. service location) |
 | GET | /users/hivers/nearby | None | PostGIS geo-search — `lat, lng, radius_km, vertical?` |
+| GET | /users/me | Auth | Current user — both facets + service location |
+| PATCH | /users/me | Auth | Edit own profile (name, phone, bio, skills, radius, lat/lng + display) — partial |
+| POST | /users/me/avatar | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | PATCH | /users/hivers/me/availability | Hiver JWT | Toggle available now |
 | POST | /users/hivers/me/boost | Hiver JWT | Buy a visibility boost (mock-charged) |
 | GET | /users/hivers/me/boost | Hiver JWT | My active boost, if any |
+| POST | /favorites | Auth | Save a task or hiver (idempotent) |
+| DELETE | /favorites/{target_type}/{target_id} | Auth | Unsave a task or hiver |
+| GET | /favorites/tasks | Auth | My saved tasks |
+| GET | /favorites/hivers | Auth | My saved hivers |
+| GET | /favorites/ids | Auth | Saved id sets per type (fills hearts) |
 
 **Deferred to Phase 5 (non-blocking for grading of Phase 4):**
 - ~~Real-time chat / message endpoints~~ ✅ **Done (Phase 7)** — task chat between the client and
@@ -523,7 +554,7 @@ Keks4eta-Hiver/
 │           │   ├── session.py            Async engine + session factory
 │           │   ├── models/               13 SQLAlchemy models
 │           │   ├── repositories/         4 Postgres repository implementations
-│           │   ├── migrations/versions/  001–017 Alembic migrations
+│           │   ├── migrations/versions/  001–022 Alembic migrations
 │           │   └── seed.py               Dev seed data
 │           ├── http/
 │           │   ├── dependencies.py       get_session, get_current_client/hiver

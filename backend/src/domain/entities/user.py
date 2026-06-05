@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from domain.value_objects.money import Money
-from domain.value_objects.rating import Rating
-from domain.value_objects.location import Location
-from domain.value_objects.work_radius import WorkRadius
-from domain.errors.domain_errors import InvalidEmailError, InsufficientRatingError
+from src.domain.errors.domain_errors import InsufficientRatingError, InvalidEmailError
+from src.domain.value_objects.location import Location
+from src.domain.value_objects.money import Money
+from src.domain.value_objects.rating import Rating
+from src.domain.value_objects.work_radius import WorkRadius
 
 
 @dataclass
@@ -20,6 +21,7 @@ class User(ABC):
     Encapsulates common user behavior; subclasses expose only
     what is relevant to their role.
     """
+
     id: str
     email: str
     _password_hash: str | None
@@ -30,8 +32,8 @@ class User(ABC):
     created_at: datetime = field(default_factory=datetime.utcnow)
     # Social login: set when the account was created via Google/Facebook.
     # password_hash is None for OAuth-only accounts.
-    oauth_provider: str | None = None   # "google" | "facebook" | None
-    oauth_id: str | None = None         # the provider's stable user id ("sub")
+    oauth_provider: str | None = None  # "google" | "facebook" | None
+    oauth_id: str | None = None  # the provider's stable user id ("sub")
 
     def __post_init__(self) -> None:
         self._validate_email(self.email)
@@ -58,8 +60,14 @@ class User(ABC):
         """
         if self._password_hash is None:
             return False
-        from passlib.context import CryptContext
-        return CryptContext(schemes=["bcrypt"], deprecated="auto").verify(plain, self._password_hash)
+        from pwdlib import PasswordHash
+        from pwdlib.hashers.argon2 import Argon2Hasher
+        from pwdlib.hashers.bcrypt import BcryptHasher
+
+        # Argon2 for new hashes; bcrypt kept so legacy ($2b$) hashes still verify.
+        return PasswordHash((Argon2Hasher(), BcryptHasher())).verify(
+            plain, self._password_hash
+        )
 
     def _validate_email(self, email: str) -> None:
         """Protected helper — shared by all subclasses."""
@@ -81,6 +89,7 @@ class Client(User):
     OOP: Inheritance from User.
     Client-specific behavior: posting tasks, rating hivers, favourites.
     """
+
     rating_as_client: Rating = field(default_factory=lambda: Rating(5.0))
     total_tasks: int = 0
     review_count: int = 0
@@ -105,7 +114,9 @@ class Client(User):
 
     def update_rating(self, new_score: float) -> None:
         """Recalculates rolling average after a new review."""
-        self.rating_as_client = self.rating_as_client.recalculate(self.review_count, new_score)
+        self.rating_as_client = self.rating_as_client.recalculate(
+            self.review_count, new_score
+        )
         self.review_count += 1
 
 
@@ -115,9 +126,10 @@ class Hiver(User):
     OOP: Inheritance from User.
     Hiver-specific behavior: accepting tasks, earning, leveling up.
     """
+
     bio: str = ""
     xp_points: int = 0
-    level: str = "beginner"   # beginner | experienced | master | legend
+    level: str = "beginner"  # beginner | experienced | master | legend
     avg_rating: Rating = field(default_factory=Rating.default)
     completed_tasks: int = 0
     review_count: int = 0
@@ -135,10 +147,10 @@ class Hiver(User):
         Higher level = lower commission (gamification incentive).
         """
         rates: dict[str, float] = {
-            "beginner":    0.20,
+            "beginner": 0.20,
             "experienced": 0.18,
-            "master":      0.16,
-            "legend":      0.14,
+            "master": 0.16,
+            "legend": 0.14,
         }
         return amount * rates[self.level]
 

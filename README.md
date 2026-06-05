@@ -15,7 +15,8 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | 4 | API layer (FastAPI routers + DI) | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + observability | ⏳ Domain unit tests done (97, green); use-case + integration tests next | — |
 | 6 | Responsive frontend + social login | ✅ Done — full responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace completion | 🔄 In progress — escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: full test coverage & polish | — |
+| 7 | Marketplace completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, service location) ✅, favorites (save tasks/hivers) ✅, task promotion (pay-to-feature) ✅, chat inbox (conversations list + unread) ✅ | — |
+| 8 | Tests green CI + cloud deploy | 🔄 Next — broaden use-case/integration tests, green CI, deploy backend + frontend | — |
 
 ## Tech Stack (short)
 
@@ -24,13 +25,14 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | Language | Python 3.12 |
 | Backend | FastAPI + Pydantic v2 + Uvicorn |
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
-| Migrations | Alembic (17 chained) |
+| Migrations | Alembic (22 chained) |
 | Database | PostgreSQL 16 + PostGIS |
 | Cache | Redis 7 |
-| Auth | JWT (python-jose) + passlib[bcrypt]; social login via Authlib (Google + Facebook) |
-| Payments | Stripe (manual capture for escrow) |
-| Storage | Supabase Storage (task images) |
-| Frontend | React 18 + TypeScript 5 + Vite 5 + Framer Motion (responsive web app) |
+| Auth | JWT (python-jose) + pwdlib (Argon2, bcrypt fallback); social login via Authlib (Google + Facebook) |
+| Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
+| Storage | Supabase Storage (task images + profile avatars); Pillow validates image integrity before upload |
+| Maps | Google Maps + Places (`@vis.gl/react-google-maps`) — task pins on Find-tasks & hiver pins on Nearby Hivers, address autocomplete on Post-a-task; keyless OSM fallback |
+| Frontend | React 19 + TypeScript 5 + Vite 8 + Framer Motion (responsive web app) |
 | Container | Docker (multi-stage) + docker-compose |
 | Infra (target) | Kubernetes + Helm + Terraform |
 | Observability | Prometheus + Grafana |
@@ -46,7 +48,7 @@ hiver/
 │   ├── src/
 │   │   ├── domain/            entities, value objects, errors, interfaces
 │   │   ├── application/       use cases + DTOs
-│   │   ├── infrastructure/    database (models, migrations 001–017, seed.py), http, payments, storage adapters
+│   │   ├── infrastructure/    database (models, migrations 001–022, seed.py), http, payments, storage adapters
 │   │   ├── shared/            config, security, DI container
 │   │   └── main.py            FastAPI entrypoint
 │   ├── tests/                 unit (domain) + use-case tests
@@ -101,6 +103,20 @@ credentials in `.env` (see `.env.example`):
 Leave a provider's credentials blank to disable it (the login button returns a clear "not
 configured" response instead of erroring).
 
+### Maps & location (optional)
+
+The Nearby-Hivers map and the Post-a-task address autocomplete use **Google Maps + Places**.
+Create `frontend/.env` (see [`frontend/.env.example`](./frontend/.env.example)) with a browser key:
+
+```
+VITE_GOOGLE_MAPS_KEY=your_browser_key
+```
+
+Provision it in the [Google Cloud Console](https://console.cloud.google.com/): enable **Maps
+JavaScript API** + **Places API**, create a browser key (restrict it to your origins), and enable
+billing (a school-demo stays within the free tier). Without the key, the map falls back to a free
+OpenStreetMap embed and the location field becomes a plain text input — the app still runs.
+
 ### Shared cloud database & real services
 
 To have the **whole team share one database** (no local Postgres) and to turn the
@@ -129,22 +145,29 @@ npm run dev                     # http://localhost:5173
 > All feature endpoints are mounted under **`/api/v1`** (e.g. `POST /api/v1/auth/login`).
 > `/health` stays at the root. The SPA's API base is `/api/v1` (override with `VITE_API_BASE`).
 
+> **Unified accounts:** every account is both a client and a hiver. The
+> `Client`/`Hiver` labels below now indicate which *facet* an action uses, not a
+> separate account type — any authenticated user can call them.
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET    | `/health` | – | Health check (root, no prefix) |
-| POST   | `/auth/register` | – | Sign up — **rate-limited 5/min/IP** |
+| POST   | `/auth/register` | – | Sign up — creates a unified account (client + hiver); **rate-limited 5/min/IP** |
 | POST   | `/auth/login` | – | Get JWT access + refresh — **rate-limited 10/min/IP** |
 | POST   | `/auth/refresh` | – | Exchange refresh token for a fresh token pair |
-| GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (`?role=client\|hiver`) |
+| GET    | `/auth/oauth/{provider}/login` | – | Start Google/Facebook login (role param accepted but ignored) |
 | GET    | `/auth/oauth/{provider}/callback` | – | Provider redirect → issues JWT, redirects to SPA |
-| GET    | `/users/me` | Auth | Current authenticated user (role-aware) |
+| GET    | `/users/me` | Auth | Current authenticated user — both client + hiver facets (incl. service location) |
+| PATCH  | `/users/me` | Auth | Edit own profile (full_name, phone, bio, skills, work_radius_km, lat/lng + display) — partial |
+| POST   | `/users/me/avatar` | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | POST   | `/tasks` | Client | Post a task |
 | GET    | `/tasks` | Client | List my tasks (paginated) |
-| GET    | `/tasks/search` | – | Public search: vertical, status, urgency, budget range |
+| GET    | `/tasks/search` | – | Public search: `vertical, status, is_urgent, min_budget, max_budget, q` (free-text), `lat/lng/radius_km` (PostGIS), `sort=recent\|distance\|budget` — results carry `latitude/longitude` for map pins |
 | GET    | `/tasks/{id}` | – | Task details |
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
 | POST   | `/tasks/{id}/complete` | Client | Client marks task done |
 | POST   | `/tasks/{id}/cancel` | Client | Cancel a non-completed task |
+| POST   | `/tasks/{id}/boost` | Client | Pay to feature the task atop search for 7 days (mock-charged) |
 | POST   | `/tasks/{id}/images` | Client | Upload a task photo to Supabase Storage |
 | POST   | `/tasks/{id}/reviews` | Auth | Submit review (blind-reveal via DB trigger) |
 | GET    | `/tasks/{id}/reviews` | – | List reviews on a task (revealed by default) |
@@ -153,6 +176,7 @@ npm run dev                     # http://localhost:5173
 | POST   | `/tasks/{id}/offers/{offer_id}/accept` | Client | Accept a bid |
 | GET    | `/tasks/{id}/messages` | Auth | Chat thread (client + assigned hiver only) |
 | POST   | `/tasks/{id}/messages` | Auth | Send a chat message (notifies the other party) |
+| GET    | `/conversations` | Auth | Chat inbox — one row per task thread (last message + unread) |
 | GET    | `/tasks/{id}/disputes` | Auth | The task's dispute, if any (participants only) |
 | POST   | `/tasks/{id}/disputes` | Auth | Open a dispute — locks escrow as `disputed` |
 | POST   | `/tasks/{id}/disputes/resolve` | Auth | Resolve by concession (client→release, hiver→refund) |
@@ -169,6 +193,11 @@ npm run dev                     # http://localhost:5173
 | PATCH  | `/users/hivers/me/availability` | Hiver | Toggle availability |
 | POST   | `/users/hivers/me/boost` | Hiver | Buy a visibility boost (mock-charged, 7 days) |
 | GET    | `/users/hivers/me/boost` | Hiver | My active boost, if any |
+| POST   | `/favorites` | Auth | Save a task or hiver (`target_type`, `target_id`) — idempotent |
+| DELETE | `/favorites/{target_type}/{target_id}` | Auth | Unsave a task or hiver |
+| GET    | `/favorites/tasks` | Auth | My saved tasks |
+| GET    | `/favorites/hivers` | Auth | My saved hivers |
+| GET    | `/favorites/ids` | Auth | Saved id sets per type (SPA fills hearts from this) |
 
 Escrow is now functional end-to-end via a mock payment adapter — accepting an offer holds
 funds, completing releases them, cancelling refunds (swap to real Stripe by setting a live
@@ -188,5 +217,5 @@ Phase 5 (still to build): unit/integration tests, Prometheus dashboards, Kuberne
 |---|---|
 | **РС** (Software Development) | Clean Architecture, REST API, error handling |
 | **ООП** (OOP) | SOLID, polymorphism, design patterns (Repository, Strategy, Observer, Factory, Adapter, …) |
-| **БД** (Databases) | 17 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
+| **БД** (Databases) | 22 migrations, PL/pgSQL triggers, PostGIS `find_hivers_in_radius`, window-function view, Row Level Security |
 | **ВОТ** (Virtualization & Cloud) | Multi-stage Docker, docker-compose, target K8s + Helm + Terraform + Prometheus |

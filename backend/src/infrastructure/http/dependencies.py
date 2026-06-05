@@ -1,24 +1,25 @@
-from typing import AsyncGenerator, Annotated
+from collections.abc import AsyncGenerator
+from typing import Annotated, Any
+
 from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.infrastructure.database.session import AsyncSessionLocal
-from src.shared.security import decode_token
+from src.domain.entities.user import Client, Hiver
 from src.domain.errors.domain_errors import InvalidTokenError, UnauthorizedActionError
 from src.domain.interfaces.ports import NotificationPayload
-from src.domain.services.event_bus import EventBus, DomainEvent, NOTIFY_EVENT
+from src.domain.services.event_bus import NOTIFY_EVENT, DomainEvent, EventBus
 from src.infrastructure.database.repositories.user_repository import (
     PostgresClientRepository,
     PostgresHiverRepository,
 )
+from src.infrastructure.database.session import AsyncSessionLocal
 from src.infrastructure.notifications.in_app_adapter import InAppNotificationAdapter
-from src.domain.entities.user import Client, Hiver
+from src.shared.security import decode_token
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            yield session
+    async with AsyncSessionLocal() as session, session.begin():
+        yield session
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -26,22 +27,22 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 async def get_current_user_payload(
     authorization: Annotated[str | None, Header()] = None,
-) -> dict:
+) -> dict[str, Any]:
     if not authorization or not authorization.startswith("Bearer "):
         raise InvalidTokenError()
     token = authorization.removeprefix("Bearer ")
     return decode_token(token)
 
 
-UserPayloadDep = Annotated[dict, Depends(get_current_user_payload)]
+UserPayloadDep = Annotated[dict[str, Any], Depends(get_current_user_payload)]
 
 
 async def get_current_client(
     payload: UserPayloadDep,
     session: SessionDep,
 ) -> Client:
-    if payload.get("role") != "client":
-        raise UnauthorizedActionError("access client-only resource")
+    # Unified accounts: any authenticated user has a client profile, so we no
+    # longer gate on a role claim — we just load the client facet by user id.
     client = await PostgresClientRepository(session).find_by_id(payload["sub"])
     if client is None:
         raise UnauthorizedActionError("access this resource")
@@ -52,8 +53,7 @@ async def get_current_hiver(
     payload: UserPayloadDep,
     session: SessionDep,
 ) -> Hiver:
-    if payload.get("role") != "hiver":
-        raise UnauthorizedActionError("access hiver-only resource")
+    # Unified accounts: any authenticated user has a hiver profile too.
     hiver = await PostgresHiverRepository(session).find_by_id(payload["sub"])
     if hiver is None:
         raise UnauthorizedActionError("access this resource")

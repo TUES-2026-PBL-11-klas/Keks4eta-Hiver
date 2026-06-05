@@ -1,9 +1,16 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, func
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
+
+if TYPE_CHECKING:
+    from .hiver_model import HiverModel
 
 
 class BoostModel(Base):
@@ -16,4 +23,4 @@ class BoostModel(Base):
     stripe_payment_id: Mapped[str]         = mapped_column(String(200), nullable=False)
     created_at:        Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    hiver: Mapped["HiverModel"] = relationship("HiverModel", back_populates="boosts")
+    hiver: Mapped[HiverModel] = relationship("HiverModel", back_populates="boosts")

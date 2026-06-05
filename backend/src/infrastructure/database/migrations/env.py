@@ -2,16 +2,19 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from src.shared.config import settings
 from src.infrastructure.database.models import Base
+from src.shared.config import settings
 
 config = context.config
 
-# Override sqlalchemy.url from settings so the .env file is the single source of truth
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Override sqlalchemy.url from settings so the .env file is the single source of truth.
+# Escape '%' as '%%': Alembic stores this in ConfigParser, which treats '%' as an
+# interpolation marker, so a percent-encoded password (e.g. %24 for '$') would crash.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -31,7 +34,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection) -> None:
+def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()

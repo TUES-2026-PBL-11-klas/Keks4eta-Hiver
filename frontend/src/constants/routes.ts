@@ -8,7 +8,10 @@ export const ROUTES = {
   POST_TASK: "/post",
   DASHBOARD: "/dashboard",
   HIVERS: "/hivers",
+  FAVORITES: "/saved",
+  INBOX: "/inbox",
   PROFILE: "/profile",
+  SETTINGS: "/settings",
   HIVER_PROFILE: "/hivers/:id",
   CLIENT_PROFILE: "/clients/:id",
 } as const;

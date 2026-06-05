@@ -1,7 +1,7 @@
-from src.domain.services.task_factory import TaskFactory, TaskCreateData
-from src.domain.errors.domain_errors import ClientNotFoundError
-from src.domain.interfaces.repositories import ITaskRepository, IClientRepository
 from src.application.dtos.task_dtos import CreateTaskRequest, TaskDetailResponse
+from src.domain.errors.domain_errors import AppError, ClientNotFoundError
+from src.domain.interfaces.repositories import IClientRepository, ITaskRepository
+from src.domain.services.task_factory import TaskCreateData, TaskFactory
 
 
 class CreateTaskUseCase:
@@ -40,7 +40,10 @@ class CreateTaskUseCase:
             location_display=request.location_display,
             image_urls=request.image_urls,
         )
-        task = TaskFactory.create(data)
+        try:
+            task = TaskFactory.create(data)
+        except ValueError as e:
+            raise AppError(str(e), "INVALID_TASK_DATA", status_code=422) from e
         await self._task_repo.save(task)
         client.record_task_posted()
         await self._client_repo.save(client)
@@ -58,6 +61,8 @@ class CreateTaskUseCase:
             budget_min=float(task.budget_min.value) if task.budget_min else None,
             budget_max=float(task.budget_max.value) if task.budget_max else None,
             location_display=task.location.display_address if task.location else None,
+            latitude=task.location.latitude if task.location else None,
+            longitude=task.location.longitude if task.location else None,
             smart_answers=task.smart_answers,
             image_urls=task.image_urls,
             expires_at=task.expires_at,

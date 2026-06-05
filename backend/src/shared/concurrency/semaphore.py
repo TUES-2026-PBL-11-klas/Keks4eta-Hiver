@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import asyncio
-from typing import Callable, Awaitable, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -17,15 +19,15 @@ class BroadcastSemaphore:
 
     async def broadcast(
         self,
-        send_fn: Callable[[T], Awaitable],
+        send_fn: Callable[[T], Awaitable[Any]],
         recipients: list[T],
-    ) -> list:
+    ) -> list[Any]:
         """Send to all recipients, at most max_concurrent at a time."""
-        async def _send_one(recipient: T):
+        async def _send_one(recipient: T) -> Any:
             async with self._semaphore:
                 return await send_fn(recipient)
 
-        return await asyncio.gather(
+        return list(await asyncio.gather(
             *[_send_one(r) for r in recipients],
             return_exceptions=True,  # don't fail all if one fails
-        )
+        ))

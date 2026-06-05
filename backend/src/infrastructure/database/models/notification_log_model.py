@@ -1,9 +1,16 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, Text, DateTime, ForeignKey, func
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from .user_model import UserModel
+
 from .base import Base
 
 
@@ -14,8 +21,8 @@ class NotificationLogModel(Base):
     user_id:    Mapped[str]  = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title:      Mapped[str]  = mapped_column(String(200), nullable=False)
     body:       Mapped[str]  = mapped_column(Text, nullable=False)
-    data:       Mapped[dict|None] = mapped_column(JSONB, default=dict)
+    data:       Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=dict)
     is_read:    Mapped[bool] = mapped_column(Boolean, default=False)
     sent_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="notifications")
+    user: Mapped[UserModel] = relationship("UserModel", back_populates="notifications")

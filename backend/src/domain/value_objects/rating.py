@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -16,18 +17,18 @@ class Rating:
             raise ValueError(f"Rating must be between 0.0 and 5.0, got {self.value}")
 
     @classmethod
-    def default(cls) -> "Rating":
+    def default(cls) -> Rating:
         return cls(0.0)
 
     @classmethod
-    def perfect(cls) -> "Rating":
+    def perfect(cls) -> Rating:
         return cls(5.0)
 
     def is_acceptable(self) -> bool:
         """Business rule: rating below 2.0 is considered unacceptable."""
         return self.value >= 2.0
 
-    def recalculate(self, current_count: int, new_score: float) -> "Rating":
+    def recalculate(self, current_count: int, new_score: float) -> Rating:
         """Returns a new Rating that includes the new score in the rolling average."""
         if current_count == 0:
             return Rating(new_score)

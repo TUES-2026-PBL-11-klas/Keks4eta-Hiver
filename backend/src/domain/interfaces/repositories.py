@@ -2,18 +2,20 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from datetime import datetime
+from typing import TypeVar
 
-from domain.entities.boost import Boost
-from domain.entities.dispute import Dispute
-from domain.entities.message import Message
-from domain.entities.notification import Notification
-from domain.entities.offer import Offer
-from domain.entities.review import Review
-from domain.entities.task import Task
-from domain.entities.transaction import Transaction
-from domain.entities.user import Client, Hiver
-from domain.value_objects.location import Location
+from src.domain.entities.boost import Boost
+from src.domain.entities.dispute import Dispute
+from src.domain.entities.favorite import Favorite
+from src.domain.entities.message import Message
+from src.domain.entities.notification import Notification
+from src.domain.entities.offer import Offer
+from src.domain.entities.review import Review
+from src.domain.entities.task import Task
+from src.domain.entities.transaction import Transaction
+from src.domain.entities.user import Client, Hiver
+from src.domain.value_objects.location import Location
 
 T = TypeVar("T")
 ID = TypeVar("ID", str, int)
@@ -22,7 +24,7 @@ ID = TypeVar("ID", str, int)
 # ── Generic Base ────────────────────────────────────────────────────────────
 
 
-class IRepository(ABC, Generic[T, ID]):
+class IRepository[T, ID: (str, int)](ABC):
     """
     Generic repository interface.
     OOP: Generics — one interface works for User, Task, Offer, etc.
@@ -40,7 +42,7 @@ class IRepository(ABC, Generic[T, ID]):
 
 
 @dataclass
-class PaginatedResult(Generic[T]):
+class PaginatedResult[T]:
     """Generic paginated response — works for any entity type."""
 
     items: list[T]
@@ -63,18 +65,18 @@ E = TypeVar("E", bound="Exception")
 
 
 @dataclass(frozen=True)
-class Success(Generic[T]):
+class Success[T]:
     data: T
     success: bool = True
 
 
 @dataclass(frozen=True)
-class Failure(Generic[E]):  # type: ignore[type-var]
+class Failure[E: "Exception"]:
     error: E
     success: bool = False
 
 
-Result = Success[T] | Failure  # type alias
+Result = Success[T] | Failure[Exception]  # type alias
 
 
 # ── Interface Segregation (SOLID — I) ───────────────────────────────────────
@@ -104,6 +106,11 @@ class IReadableTaskRepository(ABC):
         is_urgent: bool | None = None,
         min_budget: float | None = None,
         max_budget: float | None = None,
+        q: str | None = None,
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_km: float | None = None,
+        sort: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> PaginatedResult[Task]: ...
@@ -196,6 +203,26 @@ class IBoostRepository(ABC):
         ...
 
 
+class IFavoriteRepository(ABC):
+    """A user's saved tasks/hivers (DB-unique on user_id, target_type, target_id)."""
+
+    @abstractmethod
+    async def add(self, favorite: Favorite) -> Favorite: ...
+
+    @abstractmethod
+    async def remove(self, user_id: str, target_type: str, target_id: str) -> None: ...
+
+    @abstractmethod
+    async def list_for_user(
+        self, user_id: str, target_type: str
+    ) -> list[Favorite]: ...
+
+    @abstractmethod
+    async def target_ids(self, user_id: str, target_type: str) -> list[str]:
+        """Just the target ids of a given type — for marking saved state in lists."""
+        ...
+
+
 class IDisputeRepository(ABC):
     """One dispute per task (DB-unique on task_id)."""
 
@@ -207,6 +234,16 @@ class IDisputeRepository(ABC):
 
     @abstractmethod
     async def save(self, dispute: Dispute) -> Dispute: ...
+
+
+@dataclass(frozen=True)
+class ConversationRow:
+    """Per-task inbox summary: the latest message and the reader's unread count."""
+
+    task_id: str
+    last_content: str
+    last_at: datetime
+    unread: int
 
 
 class IMessageRepository(ABC):
@@ -221,6 +258,12 @@ class IMessageRepository(ABC):
     @abstractmethod
     async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
         """Mark messages the reader received (sender != reader) as read."""
+        ...
+
+    @abstractmethod
+    async def list_conversations(self, user_id: str) -> list[ConversationRow]:
+        """One row per task the user chats on — latest message + unread count,
+        newest first. Drives the inbox."""
         ...
 
 

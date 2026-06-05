@@ -40,4 +40,5 @@
   font-size: 0.74rem;
   color: var(--ink-600);
 }
-.foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: 4px; }
+.foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-top: 4px; }
+.heart { margin: -8px -8px 0 0; flex-shrink: 0; }

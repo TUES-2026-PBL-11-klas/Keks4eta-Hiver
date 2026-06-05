@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, type ReactElement } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/context/AuthContext";
@@ -11,6 +11,8 @@ import {
   PlusIcon,
   PinIcon,
   GridIcon,
+  HeartIcon,
+  ChatIcon,
 } from "@/components/icons";
 import logo from "@/assets/logo.svg";
 import s from "./AppShell.module.css";
@@ -22,7 +24,7 @@ const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ")
 interface NavItem {
   to: string;
   label: string;
-  Icon: (p: { size?: number }) => JSX.Element;
+  Icon: (p: { size?: number }) => ReactElement;
 }
 
 export default function AppShell({ children }: Props) {
@@ -47,15 +49,17 @@ export default function AppShell({ children }: Props) {
     { to: ROUTES.TASKS, label: "Browse", Icon: SearchIcon },
     { to: ROUTES.HIVERS, label: "Hivers", Icon: PinIcon },
   ];
-  if (isAuthenticated) nav.push({ to: ROUTES.DASHBOARD, label: "Dashboard", Icon: GridIcon });
+  if (isAuthenticated) {
+    nav.push({ to: ROUTES.DASHBOARD, label: "Dashboard", Icon: GridIcon });
+    nav.push({ to: ROUTES.INBOX, label: "Inbox", Icon: ChatIcon });
+    nav.push({ to: ROUTES.FAVORITES, label: "Saved", Icon: HeartIcon });
+  }
 
-  // Center call-to-action depends on who's looking.
-  const cta =
-    user?.role === "hiver"
-      ? { to: ROUTES.TASKS, label: "Find work" }
-      : isAuthenticated
-        ? { to: ROUTES.POST_TASK, label: "Post" }
-        : { to: ROUTES.REGISTER, label: "Join" };
+  // Unified accounts can both post and work, so the primary CTA is always
+  // "Post" once signed in ("Find work" lives in the Browse nav item).
+  const cta = isAuthenticated
+    ? { to: ROUTES.POST_TASK, label: "Post" }
+    : { to: ROUTES.REGISTER, label: "Join" };
 
   const profileTo = isAuthenticated ? ROUTES.PROFILE : ROUTES.LOGIN;
 
@@ -89,7 +93,7 @@ export default function AppShell({ children }: Props) {
             <Avatar name={user?.full_name ?? "Guest"} src={user?.avatar_url} size={40} />
             <span className={s.userMeta}>
               <span className={s.userName}>{user?.full_name ?? "Sign in"}</span>
-              <span className={s.userRole}>{user ? user.role : "guest"}</span>
+              <span className={s.userRole}>{user ? "Member" : "guest"}</span>
             </span>
           </Link>
         </div>

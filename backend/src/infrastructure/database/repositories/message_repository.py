@@ -1,10 +1,14 @@
 from __future__ import annotations
+
 import uuid
-from sqlalchemy import select, update
+from typing import cast
+
+from sqlalchemy import select, text, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.message import Message
-from src.domain.interfaces.repositories import IMessageRepository
+from src.domain.interfaces.repositories import ConversationRow, IMessageRepository
 from src.infrastructure.database.models import MessageModel
 
 
@@ -44,7 +48,7 @@ class PostgresMessageRepository(IMessageRepository):
         return [_to_domain(m) for m in result.scalars()]
 
     async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
-        result = await self._session.execute(
+        result = cast(CursorResult[None], await self._session.execute(
             update(MessageModel)
             .where(
                 MessageModel.task_id == task_id,
@@ -52,6 +56,49 @@ class PostgresMessageRepository(IMessageRepository):
                 MessageModel.is_read.is_(False),
             )
             .values(is_read=True)
-        )
+        ))
         await self._session.flush()
         return result.rowcount
+
+    async def list_conversations(self, user_id: str) -> list[ConversationRow]:
+        # One row per task the user participates in (client or assigned hiver):
+        # the latest message (via ROW_NUMBER) plus a count of messages still
+        # unread by this user. Newest-active conversation first.
+        rows = await self._session.execute(
+            text(
+                """
+                WITH my_tasks AS (
+                    SELECT id FROM tasks
+                    WHERE client_id = :uid OR hiver_id = :uid
+                ),
+                latest AS (
+                    SELECT m.task_id, m.content, m.created_at,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY m.task_id ORDER BY m.created_at DESC
+                           ) AS rn
+                    FROM messages m
+                    WHERE m.task_id IN (SELECT id FROM my_tasks)
+                )
+                SELECT l.task_id AS task_id,
+                       l.content AS last_content,
+                       l.created_at AS last_at,
+                       (SELECT COUNT(*) FROM messages m2
+                        WHERE m2.task_id = l.task_id
+                          AND m2.sender_id <> :uid
+                          AND m2.is_read = false) AS unread
+                FROM latest l
+                WHERE l.rn = 1
+                ORDER BY l.created_at DESC
+                """
+            ),
+            {"uid": user_id},
+        )
+        return [
+            ConversationRow(
+                task_id=r.task_id,
+                last_content=r.last_content,
+                last_at=r.last_at,
+                unread=int(r.unread),
+            )
+            for r in rows
+        ]

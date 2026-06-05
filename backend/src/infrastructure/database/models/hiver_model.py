@@ -1,8 +1,19 @@
 from __future__ import annotations
-from sqlalchemy import String, Integer, Boolean, DECIMAL, ForeignKey, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from typing import TYPE_CHECKING
+
 from geoalchemy2 import Geography
+from sqlalchemy import DECIMAL, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
+
+if TYPE_CHECKING:
+    from .boost_model import BoostModel
+    from .offer_model import OfferModel
+    from .skill_model import SkillModel
+    from .task_model import TaskModel
+    from .user_model import UserModel
 
 
 class HiverModel(Base):
@@ -18,12 +29,13 @@ class HiverModel(Base):
     is_available_now: Mapped[bool] = mapped_column(Boolean, default=False)
     work_radius_km:   Mapped[int]  = mapped_column(Integer, default=5)
     location_point:   Mapped[object|None] = mapped_column(Geography(geometry_type="POINT", srid=4326))
+    location_display: Mapped[str|None]    = mapped_column(String(255))
     stripe_account_id: Mapped[str|None]   = mapped_column(String(100))
 
-    user:   Mapped["UserModel"]          = relationship("UserModel", back_populates="hiver")
+    user:   Mapped[UserModel]          = relationship("UserModel", back_populates="hiver")
     # selectin: the hiver→domain mapping always reads .skills; async SQLAlchemy
     # can't lazy-load mid-mapping (MissingGreenlet), so eager-load it.
-    skills: Mapped[list["SkillModel"]]   = relationship("SkillModel", secondary="hiver_skills", back_populates="hivers", lazy="selectin")
-    offers: Mapped[list["OfferModel"]]   = relationship("OfferModel", back_populates="hiver")
-    tasks_assigned: Mapped[list["TaskModel"]] = relationship("TaskModel", back_populates="hiver", foreign_keys="TaskModel.hiver_id")
-    boosts: Mapped[list["BoostModel"]]   = relationship("BoostModel", back_populates="hiver")
+    skills: Mapped[list[SkillModel]]   = relationship("SkillModel", secondary="hiver_skills", back_populates="hivers", lazy="selectin")
+    offers: Mapped[list[OfferModel]]   = relationship("OfferModel", back_populates="hiver")
+    tasks_assigned: Mapped[list[TaskModel]] = relationship("TaskModel", back_populates="hiver", foreign_keys="TaskModel.hiver_id")
+    boosts: Mapped[list[BoostModel]]   = relationship("BoostModel", back_populates="hiver")

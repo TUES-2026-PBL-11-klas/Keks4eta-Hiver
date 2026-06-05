@@ -1,12 +1,54 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { APIProvider } from "@vis.gl/react-google-maps";
 import { taskService } from "@/lib/services";
 import { paths, VERTICALS } from "@/constants/routes";
 import { Button } from "@/components/ui";
 import { BoltIcon } from "@/components/icons";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import type { Vertical } from "@/types";
 import s from "./PostTask.module.css";
+
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+
+// Vertical-specific "smart" questions. The keyed answers the backend *requires*
+// per vertical (home→property_type, learn→subject, tech→device_type) live here;
+// omitting them is what used to make POST /tasks 500.
+type SmartField = {
+  key: string;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+};
+
+const SMART_FIELDS: Partial<Record<Vertical, SmartField[]>> = {
+  home: [
+    {
+      key: "property_type",
+      label: "Property type",
+      required: true,
+      options: ["Apartment", "House", "Office", "Garden", "Other"],
+    },
+  ],
+  learn: [
+    {
+      key: "subject",
+      label: "Subject",
+      required: true,
+      placeholder: "e.g. Mathematics, English, Piano",
+    },
+  ],
+  tech: [
+    {
+      key: "device_type",
+      label: "Device type",
+      required: true,
+      options: ["Phone", "Laptop", "Desktop", "Tablet", "Smart home", "Other"],
+    },
+  ],
+};
 
 export default function PostTask() {
   const navigate = useNavigate();
@@ -16,13 +58,32 @@ export default function PostTask() {
   const [description, setDescription] = useState("");
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
+  const [smartAnswers, setSmartAnswers] = useState<Record<string, string>>({});
   const [location, setLocation] = useState("");
+  // Coordinates captured when the user picks a Places suggestion (null when typed freehand).
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [urgent, setUrgent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const smartFields = SMART_FIELDS[vertical] ?? [];
+
+  // Inline budget guard — a max below the min is invalid (mirrors the API rule).
+  const budgetInvalid =
+    budgetMin !== "" && budgetMax !== "" && Number(budgetMax) < Number(budgetMin);
+
+  function pickVertical(v: Vertical) {
+    setVertical(v);
+    setSmartAnswers({}); // answers are vertical-specific; drop stale keys
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (budgetInvalid) {
+      setError("Maximum budget cannot be lower than the minimum.");
+      return;
+    }
     setError("");
     setBusy(true);
     try {
@@ -31,9 +92,12 @@ export default function PostTask() {
         subcategory,
         title,
         description,
+        smart_answers: smartAnswers,
         is_urgent: urgent,
         budget_min: budgetMin ? Number(budgetMin) : null,
         budget_max: budgetMax ? Number(budgetMax) : null,
+        latitude: lat,
+        longitude: lng,
         location_display: location || null,
       });
       navigate(paths.task(task.id));
@@ -64,7 +128,7 @@ export default function PostTask() {
                   type="button"
                   key={v.value}
                   className={`${s.vBtn} ${vertical === v.value ? s.vOn : ""}`}
-                  onClick={() => setVertical(v.value)}
+                  onClick={() => pickVertical(v.value)}
                 >
                   <Icon size={22} />
                   <span className={s.vName}>{v.label}</span>
@@ -79,6 +143,39 @@ export default function PostTask() {
           <input id="sub" className={s.input} value={subcategory}
             onChange={(e) => setSubcategory(e.target.value)} placeholder="e.g. Deep cleaning" required />
         </div>
+
+        {smartFields.map((f) => (
+          <div className={s.field} key={f.key}>
+            <label className={s.label} htmlFor={`sa-${f.key}`}>{f.label}</label>
+            {f.options ? (
+              <select
+                id={`sa-${f.key}`}
+                className={s.input}
+                value={smartAnswers[f.key] ?? ""}
+                required={f.required}
+                onChange={(e) =>
+                  setSmartAnswers((prev) => ({ ...prev, [f.key]: e.target.value }))
+                }
+              >
+                <option value="" disabled>Select…</option>
+                {f.options.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id={`sa-${f.key}`}
+                className={s.input}
+                value={smartAnswers[f.key] ?? ""}
+                required={f.required}
+                placeholder={f.placeholder}
+                onChange={(e) =>
+                  setSmartAnswers((prev) => ({ ...prev, [f.key]: e.target.value }))
+                }
+              />
+            )}
+          </div>
+        ))}
 
         <div className={s.field}>
           <label className={s.label} htmlFor="title">Title</label>
@@ -102,14 +199,40 @@ export default function PostTask() {
           <div className={s.field}>
             <label className={s.label} htmlFor="bmax">Budget max (BGN)</label>
             <input id="bmax" className={s.input} type="number" min={0} value={budgetMax}
-              onChange={(e) => setBudgetMax(e.target.value)} placeholder="Optional" />
+              onChange={(e) => setBudgetMax(e.target.value)} placeholder="Optional"
+              aria-invalid={budgetInvalid} />
           </div>
         </div>
+        {budgetInvalid && (
+          <p className={s.error}>Maximum budget cannot be lower than the minimum.</p>
+        )}
 
         <div className={s.field}>
           <label className={s.label} htmlFor="loc">Location</label>
-          <input id="loc" className={s.input} value={location}
-            onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lozenets, Sofia" />
+          {MAPS_KEY ? (
+            <APIProvider apiKey={MAPS_KEY}>
+              <AddressAutocomplete
+                id="loc"
+                className={s.input}
+                placeholder="Start typing an address…"
+                value={location}
+                onChange={(t) => {
+                  // Freehand edit invalidates any previously picked coordinates.
+                  setLocation(t);
+                  setLat(null);
+                  setLng(null);
+                }}
+                onPick={(p) => {
+                  setLocation(p.display);
+                  setLat(p.latitude);
+                  setLng(p.longitude);
+                }}
+              />
+            </APIProvider>
+          ) : (
+            <input id="loc" className={s.input} value={location}
+              onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lozenets, Sofia" />
+          )}
         </div>
 
         <label className={s.toggle}>
@@ -120,7 +243,7 @@ export default function PostTask() {
           </span>
         </label>
 
-        <Button type="submit" size="lg" disabled={busy}>
+        <Button type="submit" size="lg" disabled={busy || budgetInvalid}>
           {busy ? "Posting…" : "Post task"}
         </Button>
       </form>

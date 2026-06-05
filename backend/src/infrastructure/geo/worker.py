@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from math import radians, sin, cos, sqrt, atan2
+from math import atan2, cos, radians, sin, sqrt
 
 _executor = ThreadPoolExecutor(max_workers=4)
 

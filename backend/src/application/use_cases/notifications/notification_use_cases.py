@@ -1,5 +1,5 @@
-from src.domain.interfaces.repositories import INotificationRepository
 from src.application.dtos.notification_dtos import NotificationResponse
+from src.domain.interfaces.repositories import INotificationRepository
 
 
 class ListNotificationsUseCase:

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from domain.value_objects.rating import Rating
-from domain.errors.domain_errors import ReviewAlreadySubmittedError
+from src.domain.errors.domain_errors import ReviewAlreadySubmittedError
+from src.domain.value_objects.rating import Rating
 
 
 @dataclass

@@ -1,9 +1,9 @@
-from src.domain.errors.domain_errors import TaskNotFoundError
-from src.domain.interfaces.repositories import ITaskRepository, ITransactionRepository
-from src.domain.interfaces.ports import IPaymentPort
-from src.domain.services.event_bus import EventBus, notify
-from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
 from src.application.dtos.task_dtos import TaskDetailResponse
+from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
+from src.domain.errors.domain_errors import TaskNotFoundError
+from src.domain.interfaces.ports import IPaymentPort
+from src.domain.interfaces.repositories import ITaskRepository, ITransactionRepository
+from src.domain.services.event_bus import EventBus, notify
 
 
 class CompleteTaskUseCase:

@@ -1,17 +1,23 @@
 import uuid
 
+from src.application.dtos.dispute_dtos import DisputeResponse
 from src.domain.entities.dispute import Dispute
 from src.domain.entities.task import Task
 from src.domain.errors.domain_errors import (
-    TaskNotFoundError, UnauthorizedActionError, TransactionNotFoundError,
-    DisputeAlreadyExistsError, DisputeNotFoundError, NoEscrowToDisputeError,
-)
-from src.domain.interfaces.repositories import (
-    ITaskRepository, IDisputeRepository, ITransactionRepository,
+    DisputeAlreadyExistsError,
+    DisputeNotFoundError,
+    NoEscrowToDisputeError,
+    TaskNotFoundError,
+    TransactionNotFoundError,
+    UnauthorizedActionError,
 )
 from src.domain.interfaces.ports import IPaymentPort
+from src.domain.interfaces.repositories import (
+    IDisputeRepository,
+    ITaskRepository,
+    ITransactionRepository,
+)
 from src.domain.services.event_bus import EventBus, notify
-from src.application.dtos.dispute_dtos import DisputeResponse
 
 
 def _role(task: Task, user_id: str) -> str:

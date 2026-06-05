@@ -1,13 +1,21 @@
+import sys
+from pathlib import Path
+
+_BACKEND = Path(__file__).resolve().parents[3]
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 import pytest
 
-from domain.entities.task import Task, TaskStatus
-from domain.errors.domain_errors import (
+from src.domain.entities.task import Task, TaskStatus
+from src.domain.errors.domain_errors import (
+    InvalidBudgetRangeError,
     InvalidVerticalError,
     TaskAlreadyAcceptedError,
     TaskNotCompletedError,
     UnauthorizedActionError,
 )
-from domain.value_objects.money import Money
+from src.domain.value_objects.money import Money
 
 
 def make_task(**overrides) -> Task:
@@ -103,3 +111,37 @@ class TestTaskBudget:
 
     def test_midpoint_with_no_budget(self):
         assert make_task().budget_midpoint() is None
+
+    def test_max_below_min_rejected(self):
+        with pytest.raises(InvalidBudgetRangeError):
+            make_task(budget_min=Money.of(100), budget_max=Money.of(50))
+
+    def test_equal_min_and_max_allowed(self):
+        task = make_task(budget_min=Money.of(50), budget_max=Money.of(50))
+        assert task.budget_midpoint() == Money.of(50)
+
+
+class TestTaskFeature:
+    def test_not_featured_by_default(self):
+        assert make_task().is_featured() is False
+
+    def test_feature_sets_future_window(self):
+        task = make_task()
+        task.feature(7)
+        assert task.featured_until is not None
+        assert task.is_featured() is True
+
+    def test_feature_extends_existing_window(self):
+        task = make_task()
+        task.feature(7)
+        first = task.featured_until
+        assert first is not None
+        task.feature(7)  # buying again stacks rather than resets
+        assert task.featured_until is not None
+        assert task.featured_until > first
+
+    def test_expired_feature_is_not_active(self):
+        from datetime import UTC, datetime, timedelta
+
+        task = make_task(featured_until=datetime.now(UTC) - timedelta(days=1))
+        assert task.is_featured() is False

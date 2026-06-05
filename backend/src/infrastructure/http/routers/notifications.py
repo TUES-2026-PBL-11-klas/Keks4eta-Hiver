@@ -1,19 +1,21 @@
+from typing import Any
+
 from fastapi import APIRouter, Query
 
-from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep
-from src.infrastructure.database.repositories.notification_repository import (
-    PostgresNotificationRepository,
-)
-from src.application.use_cases.notifications.notification_use_cases import (
-    ListNotificationsUseCase,
-    CountUnreadUseCase,
-    MarkNotificationReadUseCase,
-    MarkAllNotificationsReadUseCase,
-)
 from src.application.dtos.notification_dtos import (
     NotificationResponse,
     UnreadCountResponse,
 )
+from src.application.use_cases.notifications.notification_use_cases import (
+    CountUnreadUseCase,
+    ListNotificationsUseCase,
+    MarkAllNotificationsReadUseCase,
+    MarkNotificationReadUseCase,
+)
+from src.infrastructure.database.repositories.notification_repository import (
+    PostgresNotificationRepository,
+)
+from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -44,7 +46,7 @@ async def unread_count(
 async def mark_all_read(
     session: SessionDep,
     payload: UserPayloadDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = MarkAllNotificationsReadUseCase(PostgresNotificationRepository(session))
     return {"marked": await use_case.execute(user_id=payload["sub"])}
 
@@ -54,7 +56,7 @@ async def mark_read(
     notification_id: str,
     session: SessionDep,
     payload: UserPayloadDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = MarkNotificationReadUseCase(PostgresNotificationRepository(session))
     ok = await use_case.execute(notification_id=notification_id, user_id=payload["sub"])
     return {"ok": ok}

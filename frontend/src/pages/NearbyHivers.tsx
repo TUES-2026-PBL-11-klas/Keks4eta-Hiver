@@ -1,17 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { APIProvider, Map, AdvancedMarker, Pin, useMap } from "@vis.gl/react-google-maps";
 import { userService } from "@/lib/services";
 import { paths, VERTICALS } from "@/constants/routes";
 import { Avatar, Badge, Button, Card, EmptyState, Skeleton, Stars } from "@/components/ui";
 import { Reveal } from "@/components/Reveal";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { PinIcon, Hexagon } from "@/components/icons";
 import type { HiverSearchResult, Vertical } from "@/types";
 import s from "./NearbyHivers.module.css";
 
 // Default to central Sofia until the user shares their location.
 const DEFAULT_COORDS = { lat: 42.6977, lng: 23.3219 };
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+
+// Pans the map whenever the search coordinates change (e.g. "Use my location").
+function Recenter({ coords }: { coords: { lat: number; lng: number } }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map) map.panTo(coords);
+  }, [map, coords]);
+  return null;
+}
 
 export default function NearbyHivers() {
+  const navigate = useNavigate();
   const [coords, setCoords] = useState(DEFAULT_COORDS);
   const [radius, setRadius] = useState(10);
   const [vertical, setVertical] = useState<Vertical | "">("");
@@ -46,7 +60,8 @@ export default function NearbyHivers() {
     );
   }
 
-  // Free OpenStreetMap embed (no API key) showing the search area + center marker.
+  // Keyless fallback: a free OpenStreetMap embed (bbox + center marker), used when
+  // VITE_GOOGLE_MAPS_KEY is not set so the page still works for teammates without a key.
   const latDelta = radius / 111;
   const lngDelta = radius / (111 * Math.cos((coords.lat * Math.PI) / 180));
   const bbox = [
@@ -55,9 +70,11 @@ export default function NearbyHivers() {
     coords.lng + lngDelta,
     coords.lat + latDelta,
   ].join(",");
-  const mapSrc =
+  const osmSrc =
     `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}` +
     `&layer=mapnik&marker=${coords.lat},${coords.lng}`;
+
+  const pinnable = hivers.filter((h) => h.latitude != null && h.longitude != null);
 
   return (
     <div className="page-wrap">
@@ -90,13 +107,46 @@ export default function NearbyHivers() {
       </div>
 
       <div className={s.mapWrap}>
-        <iframe
-          title="Search area map"
-          className={s.map}
-          src={mapSrc}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+        {MAPS_KEY ? (
+          <APIProvider apiKey={MAPS_KEY}>
+            <Map
+              className={s.map}
+              mapId={MAP_ID}
+              defaultCenter={coords}
+              defaultZoom={12}
+              gestureHandling="greedy"
+              clickableIcons={false}
+            >
+              <Recenter coords={coords} />
+              {/* "You are here" — the search center. */}
+              <AdvancedMarker position={coords} title="Search center">
+                <div className={s.meDot} />
+              </AdvancedMarker>
+              {pinnable.map((h) => (
+                <AdvancedMarker
+                  key={h.user_id}
+                  position={{ lat: h.latitude as number, lng: h.longitude as number }}
+                  title={h.full_name}
+                  onClick={() => navigate(paths.hiver(h.user_id))}
+                >
+                  <Pin
+                    background={h.is_boosted ? "#FBBC04" : "#1B1B1F"}
+                    glyphColor={h.is_boosted ? "#1B1B1F" : "#FBBC04"}
+                    borderColor={h.is_boosted ? "#1B1B1F" : "#FBBC04"}
+                  />
+                </AdvancedMarker>
+              ))}
+            </Map>
+          </APIProvider>
+        ) : (
+          <iframe
+            title="Search area map"
+            className={s.map}
+            src={osmSrc}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        )}
       </div>
 
       {loading && (
@@ -120,7 +170,8 @@ export default function NearbyHivers() {
           {hivers.map((h, i) => (
             <Reveal key={h.user_id} delay={Math.min(i, 6) * 0.04}>
               <Link to={paths.hiver(h.user_id)} style={{ display: "block", height: "100%" }}>
-                <Card hover className={s.hiver}>
+                <Card hover className={s.hiver} style={{ position: "relative" }}>
+                  <FavoriteButton type="hiver" id={h.user_id} className={s.hiverHeart} />
                   <Avatar name={h.full_name} src={h.avatar_url} size={56} />
                   <div className={s.info}>
                     <span className={s.name}>{h.full_name}</span>

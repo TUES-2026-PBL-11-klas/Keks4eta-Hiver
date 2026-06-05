@@ -1,24 +1,26 @@
 from fastapi import APIRouter
 
-from src.infrastructure.http.dependencies import SessionDep, UserPayloadDep, EventBusDep
-from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
+from src.application.dtos.dispute_dtos import (
+    DisputeResponse,
+    OpenDisputeRequest,
+    ResolveDisputeRequest,
+)
+from src.application.use_cases.disputes.dispute_use_cases import (
+    GetDisputeUseCase,
+    OpenDisputeUseCase,
+    ResolveDisputeUseCase,
+)
 from src.infrastructure.database.repositories.dispute_repository import (
     PostgresDisputeRepository,
+)
+from src.infrastructure.database.repositories.task_repository import (
+    PostgresTaskRepository,
 )
 from src.infrastructure.database.repositories.transaction_repository import (
     PostgresTransactionRepository,
 )
+from src.infrastructure.http.dependencies import EventBusDep, SessionDep, UserPayloadDep
 from src.infrastructure.payments.payment_factory import get_payment_port
-from src.application.use_cases.disputes.dispute_use_cases import (
-    OpenDisputeUseCase,
-    ResolveDisputeUseCase,
-    GetDisputeUseCase,
-)
-from src.application.dtos.dispute_dtos import (
-    OpenDisputeRequest,
-    ResolveDisputeRequest,
-    DisputeResponse,
-)
 
 router = APIRouter(tags=["disputes"])
 

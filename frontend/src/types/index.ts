@@ -1,4 +1,6 @@
 // ── Shared enums ────────────────────────────────────────────────────────────
+// Unified accounts: every account is both client and hiver. `Role` is kept only
+// for the legacy OAuth query param; the app no longer gates behaviour on it.
 export type Role = "client" | "hiver";
 
 export type Vertical = "home" | "learn" | "tech" | "care" | "move" | "events";
@@ -25,7 +27,8 @@ export interface Me {
   id: string;
   email: string;
   full_name: string;
-  role: Role;
+  /** Always "both" now (unified accounts) — kept for display only. */
+  role: string;
   phone?: string | null;
   avatar_url?: string | null;
   is_oauth: boolean;
@@ -38,10 +41,25 @@ export interface Me {
   is_available_now?: boolean | null;
   work_radius_km?: number | null;
   skills?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
   // client-only
   rating_as_client?: number | null;
   total_tasks?: number | null;
   review_count?: number | null;
+}
+
+/** Partial profile edit (PATCH /users/me). Omitted fields stay unchanged. */
+export interface UpdateMeBody {
+  full_name?: string;
+  phone?: string;
+  bio?: string;
+  skills?: string[];
+  work_radius_km?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
 }
 
 // ── Tasks ───────────────────────────────────────────────────────────────────
@@ -55,7 +73,19 @@ export interface TaskSummary {
   budget_min?: number | null;
   budget_max?: number | null;
   location_display?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Paid promotion — featured tasks are pinned atop search results. */
+  is_featured?: boolean;
   created_at: string;
+}
+
+// ── Favorites ─────────────────────────────────────────────────────────────
+export type FavoriteTarget = "task" | "hiver";
+
+export interface FavoriteIds {
+  tasks: string[];
+  hivers: string[];
 }
 
 export interface TaskDetail extends TaskSummary {
@@ -128,6 +158,8 @@ export interface HiverSearchResult {
   completed_tasks: number;
   is_available_now: boolean;
   work_radius_km: number;
+  latitude?: number | null;
+  longitude?: number | null;
   distance_km?: number | null;
   is_boosted?: boolean;
 }
@@ -146,6 +178,9 @@ export interface HiverProfile {
   is_available_now: boolean;
   work_radius_km: number;
   skills: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  location_display?: string | null;
   is_boosted?: boolean;
 }
 

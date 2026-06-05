@@ -1,16 +1,26 @@
 from __future__ import annotations
+
 import uuid
+
+from geoalchemy2 import WKTElement
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from passlib.context import CryptContext
 
 from src.domain.entities.user import Client, Hiver
+from src.domain.interfaces.repositories import (
+    IClientRepository,
+    IHiverRepository,
+    PaginatedResult,
+)
+from src.domain.value_objects.location import Location
 from src.domain.value_objects.rating import Rating
 from src.domain.value_objects.work_radius import WorkRadius
-from src.domain.interfaces.repositories import IClientRepository, IHiverRepository, PaginatedResult
-from src.infrastructure.database.models import UserModel, ClientModel, HiverModel
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from src.infrastructure.database.models import (
+    ClientModel,
+    HiverModel,
+    SkillModel,
+    UserModel,
+)
 
 
 def _client_model_to_domain(u: UserModel, c: ClientModel) -> Client:
@@ -105,14 +115,14 @@ class PostgresClientRepository(IClientRepository):
                 oauth_provider=entity.oauth_provider,
                 oauth_id=entity.oauth_id,
             )
-            client = ClientModel(
+            new_client = ClientModel(
                 user_id=user.id,
                 rating_as_client=entity.rating_as_client.value,
                 total_tasks=entity.total_tasks,
                 review_count=entity.review_count,
             )
             self._session.add(user)
-            self._session.add(client)
+            self._session.add(new_client)
         else:
             user.email = entity.email
             user.full_name = entity.full_name
@@ -124,10 +134,24 @@ class PostgresClientRepository(IClientRepository):
                 client.rating_as_client = entity.rating_as_client.value
                 client.total_tasks = entity.total_tasks
                 client.review_count = entity.review_count
+            else:
+                # Unified accounts: the user row exists (created via the hiver
+                # facet) but has no client row yet — add it so this account can
+                # also post tasks.
+                self._session.add(
+                    ClientModel(
+                        user_id=entity.id,
+                        rating_as_client=entity.rating_as_client.value,
+                        total_tasks=entity.total_tasks,
+                        review_count=entity.review_count,
+                    )
+                )
         await self._session.flush()
         return entity
 
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Client]:
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Client]:
         result = await self._session.execute(
             select(UserModel, ClientModel)
             .join(ClientModel, UserModel.id == ClientModel.user_id)
@@ -136,7 +160,9 @@ class PostgresClientRepository(IClientRepository):
         )
         rows = result.all()
         items = [_client_model_to_domain(r.UserModel, r.ClientModel) for r in rows]
-        return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
+        return PaginatedResult(
+            items=items, total=len(items), page=page, page_size=page_size
+        )
 
     async def delete(self, entity_id: str) -> None:
         user = await self._session.get(UserModel, entity_id)
@@ -215,35 +241,155 @@ class PostgresHiverRepository(IHiverRepository):
             user.phone = entity.phone
             user.avatar_url = entity.avatar_url
             user.is_active = entity.is_active
-            hiver = await self._session.get(HiverModel, entity.id)
-            if hiver:
-                hiver.bio = entity.bio
-                hiver.xp_points = entity.xp_points
-                hiver.level = entity.level
-                hiver.avg_rating = entity.avg_rating.value
-                hiver.completed_tasks = entity.completed_tasks
-                hiver.is_available_now = entity.is_available_now
-                hiver.work_radius_km = entity.work_radius.km
+            existing = await self._session.get(HiverModel, entity.id)
+            if existing:
+                existing.bio = entity.bio
+                existing.xp_points = entity.xp_points
+                existing.level = entity.level
+                existing.avg_rating = entity.avg_rating.value
+                existing.completed_tasks = entity.completed_tasks
+                existing.is_available_now = entity.is_available_now
+                existing.work_radius_km = entity.work_radius.km
+                hiver = existing
+            else:
+                # Unified accounts: the user row exists (created via the client
+                # facet) but has no hiver row yet — add it so this account can
+                # also offer on and do tasks.
+                hiver = HiverModel(
+                    user_id=entity.id,
+                    bio=entity.bio,
+                    xp_points=entity.xp_points,
+                    level=entity.level,
+                    avg_rating=entity.avg_rating.value,
+                    completed_tasks=entity.completed_tasks,
+                    review_count=entity.review_count,
+                    is_available_now=entity.is_available_now,
+                    work_radius_km=entity.work_radius.km,
+                )
+                self._session.add(hiver)
+
+        # Persist the PostGIS service location + its display address. Only write
+        # when the caller actually carries a location, so unrelated saves (e.g.
+        # the availability toggle, which loads a hiver without coordinates) never
+        # wipe a previously stored point. POINT order is (longitude latitude);
+        # WKTElement avoids a shapely dependency.
+        if entity.location is not None:
+            hiver.location_point = WKTElement(
+                f"POINT({entity.location.longitude} {entity.location.latitude})",
+                srid=4326,
+            )
+            hiver.location_display = entity.location.display_address
+        await self._sync_skills(hiver, entity.skills)
         await self._session.flush()
         return entity
 
-    async def find_available_near(self, location, radius_km, vertical=None) -> list[Hiver]:
+    async def _sync_skills(self, hiver: HiverModel, names: list[str]) -> None:
+        """Reconcile the hiver_skills association to exactly ``names``.
+
+        Skill rows are shared and unique by name, so reuse existing rows and
+        create only the genuinely new ones. Idempotent: saving with the same
+        names the entity was loaded with leaves the association untouched.
+        """
+        wanted = list(dict.fromkeys(n.strip() for n in names if n.strip()))
+        if not wanted:
+            hiver.skills = []
+            return
+        existing = (
+            (
+                await self._session.execute(
+                    select(SkillModel).where(SkillModel.name.in_(wanted))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_name = {s.name: s for s in existing}
+        models: list[SkillModel] = []
+        for name in wanted:
+            skill = by_name.get(name)
+            if skill is None:
+                skill = SkillModel(name=name)
+                self._session.add(skill)
+                by_name[name] = skill
+            models.append(skill)
+        hiver.skills = models
+
+    async def read_location(self, user_id: str) -> Location | None:
+        """Read a hiver's stored service location (lat/lng + display address).
+
+        Kept off the hot ``find_by_id`` path (which runs on every authenticated
+        request); profile endpoints call this only when they render coordinates.
+        Uses raw ST_Y/ST_X to avoid geoalchemy2's broken geography typmod cast.
+        """
+        row = (
+            await self._session.execute(
+                text(
+                    """
+                    SELECT ST_Y(location_point::geometry) AS lat,
+                           ST_X(location_point::geometry) AS lng,
+                           location_display AS display
+                    FROM hivers
+                    WHERE user_id = :uid AND location_point IS NOT NULL
+                    """
+                ),
+                {"uid": user_id},
+            )
+        ).first()
+        if row is None:
+            return None
+        return Location(
+            latitude=row.lat, longitude=row.lng, display_address=row.display
+        )
+
+    async def find_available_near(
+        self, location: Location, radius_km: int, vertical: str | None = None
+    ) -> list[Hiver]:
         # Uses the PL/pgSQL function from migration 014
         from sqlalchemy import text
+
         result = await self._session.execute(
-            text("SELECT user_id FROM find_hivers_in_radius(:lat, :lng, :radius, :vertical)"),
-            {"lat": location.latitude, "lng": location.longitude,
-             "radius": radius_km, "vertical": vertical},
+            text(
+                "SELECT user_id FROM find_hivers_in_radius(:lat, :lng, :radius, :vertical)"
+            ),
+            {
+                "lat": location.latitude,
+                "lng": location.longitude,
+                "radius": radius_km,
+                "vertical": vertical,
+            },
         )
         ids = [row.user_id for row in result]
+        if not ids:
+            return []
+        # The PL/pgSQL function returns only user_id; fetch each hiver's coordinates
+        # in one batch so the domain entity carries a real Location (drives both the
+        # distance shown in the UI and the map pins). ST_X/ST_Y avoid a shapely dep.
+        coord_rows = await self._session.execute(
+            text(
+                """
+                SELECT user_id,
+                       ST_Y(location_point::geometry) AS lat,
+                       ST_X(location_point::geometry) AS lng
+                FROM hivers
+                WHERE user_id = ANY(:ids) AND location_point IS NOT NULL
+                """
+            ),
+            {"ids": ids},
+        )
+        coords = {r.user_id: (r.lat, r.lng) for r in coord_rows}
         hivers = []
         for hiver_id in ids:
             h = await self.find_by_id(hiver_id)
             if h:
+                if hiver_id in coords:
+                    lat, lng = coords[hiver_id]
+                    h.location = Location(latitude=lat, longitude=lng)
                 hivers.append(h)
         return hivers
 
-    async def find_all(self, page: int = 1, page_size: int = 20) -> PaginatedResult[Hiver]:
+    async def find_all(
+        self, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Hiver]:
         result = await self._session.execute(
             select(UserModel, HiverModel)
             .join(HiverModel, UserModel.id == HiverModel.user_id)
@@ -252,7 +398,9 @@ class PostgresHiverRepository(IHiverRepository):
         )
         rows = result.all()
         items = [_hiver_model_to_domain(r.UserModel, r.HiverModel) for r in rows]
-        return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
+        return PaginatedResult(
+            items=items, total=len(items), page=page, page_size=page_size
+        )
 
     async def delete(self, entity_id: str) -> None:
         user = await self._session.get(UserModel, entity_id)

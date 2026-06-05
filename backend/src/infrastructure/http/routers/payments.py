@@ -1,11 +1,24 @@
+from typing import Any
+
 from fastapi import APIRouter
 
-from src.infrastructure.http.dependencies import SessionDep, ClientDep, UserPayloadDep, EventBusDep
-from src.infrastructure.database.repositories.task_repository import PostgresTaskRepository
-from src.infrastructure.database.repositories.transaction_repository import PostgresTransactionRepository
-from src.application.use_cases.payments.release_escrow_use_case import ReleaseEscrowUseCase
-from src.application.use_cases.payments.get_escrow_use_case import GetEscrowUseCase
 from src.application.dtos.payment_dtos import EscrowResponse
+from src.application.use_cases.payments.get_escrow_use_case import GetEscrowUseCase
+from src.application.use_cases.payments.release_escrow_use_case import (
+    ReleaseEscrowUseCase,
+)
+from src.infrastructure.database.repositories.task_repository import (
+    PostgresTaskRepository,
+)
+from src.infrastructure.database.repositories.transaction_repository import (
+    PostgresTransactionRepository,
+)
+from src.infrastructure.http.dependencies import (
+    ClientDep,
+    EventBusDep,
+    SessionDep,
+    UserPayloadDep,
+)
 from src.infrastructure.payments.payment_factory import get_payment_port
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -30,7 +43,7 @@ async def release_escrow(
     session: SessionDep,
     client: ClientDep,
     bus: EventBusDep,
-) -> dict:
+) -> dict[str, Any]:
     use_case = ReleaseEscrowUseCase(
         task_repo=PostgresTaskRepository(session),
         transaction_repo=PostgresTransactionRepository(session),

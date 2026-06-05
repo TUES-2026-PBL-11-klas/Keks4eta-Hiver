@@ -1,12 +1,15 @@
-from pydantic import BaseModel, EmailStr, field_validator
 from typing import Literal
+
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class RegisterRequest(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    role: Literal["client", "hiver"]
+    # Unified accounts: every account is both client and hiver, so role is no
+    # longer chosen at registration. Kept optional + ignored for backward compat.
+    role: Literal["client", "hiver"] | None = None
     phone: str | None = None
 
     @field_validator("password")

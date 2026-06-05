@@ -1,8 +1,9 @@
 from __future__ import annotations
-from pydantic import BaseModel, field_validator
-from typing import Literal
-from datetime import datetime
 
+from datetime import datetime
+from typing import Any, Literal
+
+from pydantic import BaseModel, field_validator, model_validator
 
 VALID_VERTICALS = {"home", "learn", "tech", "care", "move", "events"}
 
@@ -12,7 +13,7 @@ class CreateTaskRequest(BaseModel):
     subcategory: str
     title: str
     description: str
-    smart_answers: dict = {}
+    smart_answers: dict[str, Any] = {}
     is_urgent: bool = False
     budget_min: float | None = None
     budget_max: float | None = None
@@ -35,6 +36,23 @@ class CreateTaskRequest(BaseModel):
             raise ValueError("title cannot be empty")
         return v.strip()
 
+    @field_validator("budget_min", "budget_max")
+    @classmethod
+    def budget_non_negative(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("budget cannot be negative")
+        return v
+
+    @model_validator(mode="after")
+    def budget_range(self) -> CreateTaskRequest:
+        if (
+            self.budget_min is not None
+            and self.budget_max is not None
+            and self.budget_min > self.budget_max
+        ):
+            raise ValueError("budget_min cannot exceed budget_max")
+        return self
+
 
 class TaskSummaryResponse(BaseModel):
     id: str
@@ -46,6 +64,11 @@ class TaskSummaryResponse(BaseModel):
     budget_min: float | None
     budget_max: float | None
     location_display: str | None
+    # Real coordinates (from PostGIS) so the SPA can drop a map pin per task.
+    latitude: float | None = None
+    longitude: float | None = None
+    # Paid promotion — featured tasks are pinned atop search results.
+    is_featured: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -55,7 +78,7 @@ class TaskDetailResponse(TaskSummaryResponse):
     description: str
     client_id: str
     hiver_id: str | None
-    smart_answers: dict
+    smart_answers: dict[str, Any]
     image_urls: list[str]
     expires_at: datetime | None
     updated_at: datetime
@@ -65,3 +88,16 @@ class TaskDetailResponse(TaskSummaryResponse):
 
 class UpdateTaskStatusRequest(BaseModel):
     status: Literal["accepted", "in_progress", "completed", "cancelled"]
+
+
+# Fixed task-promotion pricing for the demo (mock-charged via the payment port).
+TASK_BOOST_PRICE_BGN = 3.0
+TASK_BOOST_DURATION_DAYS = 7
+
+
+class BoostTaskResponse(BaseModel):
+    task_id: str
+    featured_until: datetime
+    price_bgn: float = TASK_BOOST_PRICE_BGN
+
+    model_config = {"from_attributes": True}

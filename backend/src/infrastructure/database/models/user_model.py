@@ -1,9 +1,20 @@
 from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, func
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .base import Base
+
+if TYPE_CHECKING:
+    from .client_model import ClientModel
+    from .hiver_model import HiverModel
+    from .message_model import MessageModel
+    from .notification_log_model import NotificationLogModel
+    from .review_model import ReviewModel
 
 
 class UserModel(Base):
@@ -22,9 +33,9 @@ class UserModel(Base):
     created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    client:  Mapped["ClientModel|None"]           = relationship("ClientModel", back_populates="user", uselist=False)
-    hiver:   Mapped["HiverModel|None"]            = relationship("HiverModel", back_populates="user", uselist=False)
-    reviews_given:    Mapped[list["ReviewModel"]] = relationship("ReviewModel", foreign_keys="ReviewModel.reviewer_id", back_populates="reviewer")
-    reviews_received: Mapped[list["ReviewModel"]] = relationship("ReviewModel", foreign_keys="ReviewModel.reviewee_id", back_populates="reviewee")
-    messages_sent:    Mapped[list["MessageModel"]]= relationship("MessageModel", back_populates="sender")
-    notifications:    Mapped[list["NotificationLogModel"]] = relationship("NotificationLogModel", back_populates="user")
+    client:  Mapped[ClientModel|None]           = relationship("ClientModel", back_populates="user", uselist=False)
+    hiver:   Mapped[HiverModel|None]            = relationship("HiverModel", back_populates="user", uselist=False)
+    reviews_given:    Mapped[list[ReviewModel]] = relationship("ReviewModel", foreign_keys="ReviewModel.reviewer_id", back_populates="reviewer")
+    reviews_received: Mapped[list[ReviewModel]] = relationship("ReviewModel", foreign_keys="ReviewModel.reviewee_id", back_populates="reviewee")
+    messages_sent:    Mapped[list[MessageModel]]= relationship("MessageModel", back_populates="sender")
+    notifications:    Mapped[list[NotificationLogModel]] = relationship("NotificationLogModel", back_populates="user")

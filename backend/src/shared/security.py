@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
+from typing import Any
+
+from jose import JWTError, jwt
+
+from src.domain.errors.domain_errors import InvalidTokenError, TokenExpiredError
 from src.shared.config import settings
-from src.domain.errors.domain_errors import TokenExpiredError, InvalidTokenError
 
 
 def create_access_token(user_id: str, role: str) -> str:
@@ -10,7 +13,7 @@ def create_access_token(user_id: str, role: str) -> str:
         "role": role,
         "exp": datetime.utcnow() + timedelta(minutes=settings.jwt_access_expire_minutes),
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm))
 
 
 def create_refresh_token(user_id: str) -> str:
@@ -19,13 +22,16 @@ def create_refresh_token(user_id: str) -> str:
         "type": "refresh",
         "exp": datetime.utcnow() + timedelta(days=settings.jwt_refresh_expire_days),
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return str(jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm))
 
 
-def decode_token(token: str) -> dict:
+def decode_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        result: dict[str, Any] = jwt.decode(
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+        )
+        return result
     except JWTError as e:
         if "expired" in str(e).lower():
-            raise TokenExpiredError()
-        raise InvalidTokenError()
+            raise TokenExpiredError() from e
+        raise InvalidTokenError() from e

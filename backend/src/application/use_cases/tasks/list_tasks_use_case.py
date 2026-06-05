@@ -1,5 +1,5 @@
-from src.domain.interfaces.repositories import ITaskRepository, PaginatedResult
 from src.application.dtos.task_dtos import TaskSummaryResponse
+from src.domain.interfaces.repositories import ITaskRepository, PaginatedResult
 
 
 class ListClientTasksUseCase:
@@ -21,6 +21,9 @@ class ListClientTasksUseCase:
                 budget_min=float(t.budget_min.value) if t.budget_min else None,
                 budget_max=float(t.budget_max.value) if t.budget_max else None,
                 location_display=t.location.display_address if t.location else None,
+                latitude=t.location.latitude if t.location else None,
+                longitude=t.location.longitude if t.location else None,
+                is_featured=t.is_featured(),
                 created_at=t.created_at,
             )
             for t in result.items

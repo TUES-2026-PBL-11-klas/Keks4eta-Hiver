@@ -3,6 +3,8 @@ import type {
   ClientProfile,
   CreateOfferBody,
   CreateTaskBody,
+  FavoriteIds,
+  FavoriteTarget,
   HiverProfile,
   HiverSearchResult,
   Me,
@@ -14,6 +16,7 @@ import type {
   TaskStatus,
   TaskSummary,
   TokenResponse,
+  UpdateMeBody,
   Vertical,
 } from "@/types";
 
@@ -29,7 +32,7 @@ function qs(params: Record<string, unknown>): string {
 export const authService = {
   login: (email: string, password: string) =>
     api.post<TokenResponse>("/auth/login", { email, password }),
-  register: (body: { full_name: string; email: string; password: string; role: string }) =>
+  register: (body: { full_name: string; email: string; password: string }) =>
     api.post<TokenResponse>("/auth/register", body),
   me: () => api.get<Me>("/users/me"),
 };
@@ -40,6 +43,14 @@ export interface TaskSearchParams {
   is_urgent?: boolean;
   min_budget?: number;
   max_budget?: number;
+  /** Free-text over title / description / subcategory. */
+  q?: string;
+  /** Geo radius search — all three needed together. */
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
+  /** "recent" (default) | "distance" | "budget". */
+  sort?: "recent" | "distance" | "budget";
   page?: number;
   page_size?: number;
 }
@@ -59,6 +70,10 @@ export const taskService = {
     fd.append("file", file);
     return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
   },
+  boost: (id: string) =>
+    api.post<{ task_id: string; featured_until: string; price_bgn: number }>(
+      `/tasks/${id}/boost`,
+    ),
 };
 
 export const offerService = {
@@ -88,6 +103,23 @@ export const userService = {
   }) => api.get<HiverSearchResult[]>(`/users/hivers/nearby${qs({ ...params })}`),
   setAvailability: (is_available_now: boolean) =>
     api.patch<HiverProfile>("/users/hivers/me/availability", { is_available_now }),
+  /** Edit own profile (partial). Returns the refreshed unified `Me`. */
+  updateMe: (body: UpdateMeBody) => api.patch<Me>("/users/me", body),
+  uploadAvatar: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<Me>("/users/me/avatar", fd);
+  },
+};
+
+export const favoriteService = {
+  ids: () => api.get<FavoriteIds>("/favorites/ids"),
+  tasks: () => api.get<TaskSummary[]>("/favorites/tasks"),
+  hivers: () => api.get<HiverProfile[]>("/favorites/hivers"),
+  add: (target_type: FavoriteTarget, target_id: string) =>
+    api.post("/favorites", { target_type, target_id }),
+  remove: (target_type: FavoriteTarget, target_id: string) =>
+    api.delete(`/favorites/${target_type}/${target_id}`),
 };
 
 export interface Boost {
@@ -149,10 +181,22 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface Conversation {
+  task_id: string;
+  task_title: string;
+  other_user_id: string | null;
+  other_user_name: string;
+  other_user_avatar: string | null;
+  last_message: string;
+  last_at: string;
+  unread: number;
+}
+
 export const messageService = {
   list: (taskId: string) => api.get<ChatMessage[]>(`/tasks/${taskId}/messages`),
   send: (taskId: string, content: string) =>
     api.post<ChatMessage>(`/tasks/${taskId}/messages`, { content }),
+  conversations: () => api.get<Conversation[]>("/conversations"),
 };
 
 export interface Dispute {

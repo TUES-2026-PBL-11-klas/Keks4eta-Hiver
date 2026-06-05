@@ -16,13 +16,11 @@ const STEPS = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const primaryCta = !isAuthenticated
     ? { label: "Get started", to: ROUTES.REGISTER }
-    : user?.role === "hiver"
-      ? { label: "Find work", to: ROUTES.TASKS }
-      : { label: "Post a task", to: ROUTES.POST_TASK };
+    : { label: "Post a task", to: ROUTES.POST_TASK };
 
   return (
     <div>

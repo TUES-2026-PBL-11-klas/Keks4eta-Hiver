@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { reviewService, userService } from "@/lib/services";
 import { Avatar, Badge, Card, EmptyState, Spinner, Stars } from "@/components/ui";
-import { Hexagon } from "@/components/icons";
+import { Hexagon, PinIcon } from "@/components/icons";
 import type { ClientProfile, HiverProfile, Review } from "@/types";
 import s from "./PublicProfile.module.css";
 
@@ -87,6 +87,11 @@ export default function PublicProfile({ kind }: { kind: "hiver" | "client" }) {
           <div className={s.skills}>
             {hiver.skills.map((sk) => <Badge key={sk}>{sk}</Badge>)}
           </div>
+        )}
+        {hiver?.location_display && (
+          <p className={s.location}>
+            <PinIcon size={15} /> {hiver.location_display} · {hiver.work_radius_km} km radius
+          </p>
         )}
       </Card>
 
