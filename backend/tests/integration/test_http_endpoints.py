@@ -396,6 +396,17 @@ class TestOffersRouter:
         r = client.post(f"{PREFIX}/tasks/task-xyz/offers/offer-abc/accept")
         assert r.status_code in (400, 404, 500)
 
+    def test_create_offer_negative_price(self, client: TestClient) -> None:
+        r = client.post(
+            f"{PREFIX}/tasks/task-1/offers",
+            json={"price": -5.0, "message": "x", "estimated_hours": 1},
+        )
+        assert r.status_code == 422
+
+    def test_create_offer_missing_body(self, client: TestClient) -> None:
+        r = client.post(f"{PREFIX}/tasks/task-1/offers", json={})
+        assert r.status_code == 422
+
 
 # ── Disputes ──────────────────────────────────────────────────────────────────
 
