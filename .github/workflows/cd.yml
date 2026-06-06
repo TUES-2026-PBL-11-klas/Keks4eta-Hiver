@@ -27,7 +27,7 @@ jobs:
             hiver/backend:${{ github.sha }}
 
       - name: Deploy with Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
       - run: |
           helm upgrade --install hiver infra/k8s/charts/hiver \
             --set image.tag=${{ github.sha }} \
