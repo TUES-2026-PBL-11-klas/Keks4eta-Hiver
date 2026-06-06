@@ -1,0 +1,35 @@
+# Alertmanager config. Prometheus pushes firing alerts here; this routes them to
+# receivers. The demo uses a webhook receiver (swap in Slack/email/PagerDuty by
+# replacing the receiver — the routing tree stays the same).
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: ["alertname", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: critical
+      repeat_interval: 1h
+
+receivers:
+  - name: default
+    # Placeholder sink — replace `url` with a real Slack/Teams/webhook endpoint.
+    webhook_configs:
+      - url: "http://example.invalid/alerts"
+        send_resolved: true
+
+  - name: critical
+    webhook_configs:
+      - url: "http://example.invalid/alerts/critical"
+        send_resolved: true
+
+inhibit_rules:
+  # A critical alert silences a warning with the same alertname.
+  - source_matchers: [severity = "critical"]
+    target_matchers: [severity = "warning"]
+    equal: ["alertname"]

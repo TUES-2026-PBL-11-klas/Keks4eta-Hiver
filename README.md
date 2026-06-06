@@ -218,12 +218,14 @@ Task image uploads are live on **real Supabase Storage** (`POST /tasks/{id}/imag
 
 ## Observability
 
-`docker compose up` brings up Prometheus (`:9090`) and Grafana (`:3001`, admin/admin). The
-backend exposes **`/metrics`** (via `prometheus-fastapi-instrumentator`); Prometheus scrapes the
-compose `backend` service and Grafana auto-loads the Prometheus datasource. To see metrics flow,
-run the backend **as the compose service** (`docker compose up backend`) so the `backend:8000`
-target resolves — the host-run dev server (Getting Started) is reachable at `localhost:8000` but
-not at the `backend` hostname Prometheus uses.
+`docker compose up` brings up Prometheus (`:9090`), Alertmanager (`:9093`) and Grafana (`:3001`,
+admin/admin). The backend exposes **`/metrics`** (via `prometheus-fastapi-instrumentator`);
+Prometheus scrapes the compose `backend` service, evaluates the rules in
+`infra/prometheus/alerts.yml`, and routes firing alerts to Alertmanager. Grafana auto-provisions
+the Prometheus datasource **and** a ready dashboard ("Hiver — Backend Overview": uptime, request
+rate, 5xx rate, p50/p95 latency). To see metrics flow, run the backend **as the compose service**
+(`docker compose up backend`) so the `backend:8000` target resolves — the host-run dev server
+(Getting Started) is reachable at `localhost:8000` but not at the `backend` hostname Prometheus uses.
 
 ## Deployment
 

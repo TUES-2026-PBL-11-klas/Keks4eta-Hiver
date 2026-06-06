@@ -1,0 +1,13 @@
+# Auto-loads any dashboard JSON found in /var/lib/grafana/dashboards on startup.
+apiVersion: 1
+
+providers:
+  - name: Hiver
+    orgId: 1
+    folder: Hiver
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

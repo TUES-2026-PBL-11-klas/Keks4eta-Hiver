@@ -50,13 +50,24 @@ services:
       - ./infra/prometheus:/etc/prometheus
     ports:
       - "9090:9090"
+    depends_on:
+      - alertmanager
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
     volumes:
-      # Auto-provisions the Prometheus datasource on startup.
+      # Auto-provisions the Prometheus datasource + dashboards on startup.
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus

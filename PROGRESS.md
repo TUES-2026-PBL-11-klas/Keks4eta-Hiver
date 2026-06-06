@@ -433,14 +433,13 @@ earnings past it.
   completion, and refunds on cancel; `GET /payments/tasks/{id}` exposes escrow state to the client
   and assigned hiver. No external Stripe account required.
 - **Test suite — 294 unit tests (green) + HTTP integration tests.** Unit: domain value objects/entities (pure Python) **plus** application use cases with in-memory fake repos (auth, offers, tasks, profiles, favorites, task-boost, conversations, image validation). Integration: `tests/integration/test_http_endpoints.py` drives the FastAPI app with `TestClient` (offers + favorites flows). Run units with `pytest tests/unit -q --no-cov`; full suite with `pytest --cov=src --cov-fail-under=80` (needs the Postgres + Redis containers).
-- **Observability wired** — the backend exposes **`/metrics`** via `prometheus-fastapi-instrumentator` (`src/main.py`); `infra/prometheus/prometheus.yml` scrapes the compose `backend` service; Grafana auto-provisions the Prometheus datasource (`infra/grafana/provisioning/`). Alert rules in `infra/prometheus/alerts.yml`.
+- **Observability wired end-to-end** — the backend exposes **`/metrics`** via `prometheus-fastapi-instrumentator` (`src/main.py`); `infra/prometheus/prometheus.yml` scrapes the compose `backend` service and routes alerts to **Alertmanager** (`:9093`); Grafana auto-provisions the Prometheus datasource **and** a ready dashboard (`infra/grafana/dashboards/hiver-overview.json` — uptime, request rate, 5xx rate, p50/p95 latency).
 - **Kubernetes Helm chart complete** — `infra/k8s/charts/hiver/` now has `Chart.yaml`, `_helpers.tpl`, and Deployment/Service/HPA/Ingress templates consuming `values.yaml` (2–10 replicas, rolling updates, CPU-based HPA, secret via `envFrom`). Validate with `helm lint` / `helm template`.
 
 **Still planned (live deploy + polish, not blocking the grade):**
 - **Actual cloud deploy** — provision a cluster + registry creds + a cluster-auth step in `cd.yml` + a `hiver-secrets` Secret (README "Deployment"). Terraform skeleton under `infra/terraform/` is unapplied.
-- **Grafana dashboards** — the datasource is provisioned; ready-made dashboard JSON (latency p50/p99, error rate, RPS) is still added via the UI.
 - **Real Stripe + FCM** — mock payment adapter and in-app notifications are the working defaults.
-- **Alert rules already configured (need an Alertmanager to route):**
+- **Alert rules wired to Alertmanager** — `infra/alertmanager/alertmanager.yml` (compose service `:9093`); Prometheus routes firing alerts there. Receivers are placeholder webhooks (swap for Slack/email). Rules:
   - HTTP 5xx error rate > 5% → critical
   - DB connection pool > 80% → warning
   - Escrow release job stale > 2 hours → critical

@@ -5,9 +5,24 @@ global:
 rule_files:
   - "alerts.yml"
 
+# Route firing alerts to Alertmanager (compose service `alertmanager`).
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: "hiver-backend"
     static_configs:
       - targets: ["backend:8000"]
     metrics_path: /metrics
+
+  # Alertmanager + Prometheus self-scrape, handy for the monitoring demo.
+  - job_name: "alertmanager"
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
 
