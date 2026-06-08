@@ -10,7 +10,8 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import type { UpdateMeBody } from "@/types";
 import s from "./Settings.module.css";
 
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+// Treat an empty/whitespace key as "no key" so a blank VITE_GOOGLE_MAPS_KEY falls back to a plain input.
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY?.trim() || undefined;
 // Mirrors the WorkRadius value object's allowed tiers (backend rejects others).
 const RADII = [1, 2, 5, 10, 15, 20];
 const MAX_SKILLS = 12;
@@ -102,7 +103,9 @@ export default function Settings() {
       await userService.updateMe(body);
       await refresh();
       setSkills(finalSkills);
-      setOk("Profile saved.");
+      // Saving should leave the edit menu — return to the profile (which now shows the changes).
+      navigate(ROUTES.PROFILE);
+      return;
     } catch (err) {
       setError((err as Error).message);
     } finally {

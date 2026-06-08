@@ -9,6 +9,7 @@ import {
   paymentService,
   reviewService,
   taskService,
+  userService,
   type ChatMessage,
   type Dispute,
   type Escrow,
@@ -55,6 +56,8 @@ export default function TaskDetail() {
   const [chatBusy, setChatBusy] = useState(false);
   const chatLogRef = useRef<HTMLDivElement>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
+  // The other party in the chat, so the user can see who they're talking to.
+  const [partner, setPartner] = useState<{ name: string; avatar?: string | null; to: string } | null>(null);
 
   const isOwner = !!user && task?.client_id === user.id;
   const isAssignedHiver = !!user && task?.hiver_id === user.id;
@@ -136,6 +139,27 @@ export default function TaskDetail() {
     return () => ws.close();
   }, [canChat, id]);
 
+  // Resolve the chat partner (the party that isn't me) so we can show their name.
+  useEffect(() => {
+    if (!canChat || !task || !user) {
+      setPartner(null);
+      return;
+    }
+    let active = true;
+    const fetch =
+      isOwner && task.hiver_id
+        ? userService
+            .hiverProfile(task.hiver_id)
+            .then((h) => ({ name: h.full_name, avatar: h.avatar_url, to: paths.hiver(h.user_id) }))
+        : userService
+            .clientProfile(task.client_id)
+            .then((c) => ({ name: c.full_name, avatar: c.avatar_url, to: paths.client(c.user_id) }));
+    fetch.then((p) => active && setPartner(p)).catch(() => active && setPartner(null));
+    return () => {
+      active = false;
+    };
+  }, [canChat, task, user, isOwner]);
+
   // Keep the chat scrolled to the newest message.
   useEffect(() => {
     const el = chatLogRef.current;
@@ -212,9 +236,14 @@ export default function TaskDetail() {
 
   return (
     <div className="page-wrap">
-      <Link to={ROUTES.TASKS} className={s.back}>
-        <ArrowLeftIcon size={16} /> All tasks
-      </Link>
+      <button
+        type="button"
+        className={s.back}
+        style={{ background: "none", border: 0, padding: 0, font: "inherit", cursor: "pointer" }}
+        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(ROUTES.TASKS))}
+      >
+        <ArrowLeftIcon size={16} /> Back
+      </button>
 
       <div className={s.layout}>
         {/* ── Main ─────────────────────────────────────────────── */}
@@ -309,6 +338,23 @@ export default function TaskDetail() {
             <>
               <h2 className={s.sectionTitle}>Messages</h2>
               <Card className={s.chatCard}>
+                {partner && (
+                  <Link
+                    to={partner.to}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 12px",
+                      borderBottom: "1px solid var(--line)",
+                      color: "var(--ink-700)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Avatar name={partner.name} src={partner.avatar} size={28} />
+                    {partner.name}
+                  </Link>
+                )}
                 <div className={s.chatLog} ref={chatLogRef}>
                   {messages.length === 0 ? (
                     <p className={s.hint} style={{ textAlign: "center", margin: "auto" }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { APIProvider, Map, AdvancedMarker, Pin, useMap } from "@vis.gl/react-google-maps";
 import { taskService } from "@/lib/services";
 import { paths, VERTICALS } from "@/constants/routes";
@@ -14,7 +14,8 @@ const cx = (...c: (string | false)[]) => c.filter(Boolean).join(" ");
 
 // Map of TASKS to do (not hivers) — the discovery view for people looking for work.
 const DEFAULT_COORDS = { lat: 42.6977, lng: 23.3219 }; // central Sofia
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+// Treat an empty/whitespace key as "no key" so a blank VITE_GOOGLE_MAPS_KEY falls back to OSM.
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY?.trim() || undefined;
 const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
 type SortKey = "recent" | "distance" | "budget";
@@ -29,10 +30,15 @@ function Recenter({ coords }: { coords: { lat: number; lng: number } }) {
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Applied filters (drive the query). Free-text + budget apply on submit;
   // category / urgent / sort / radius / location apply immediately.
-  const [vertical, setVertical] = useState<Vertical | "">("");
+  // Seed the category from ?vertical= so Home's category cards land here pre-filtered.
+  const [vertical, setVertical] = useState<Vertical | "">(() => {
+    const v = searchParams.get("vertical");
+    return VERTICALS.some((x) => x.value === v) ? (v as Vertical) : "";
+  });
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("recent");
   const [radius, setRadius] = useState(10);
