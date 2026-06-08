@@ -17,6 +17,7 @@ export default defineConfig({
         // and miss an IPv4-only backend.
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
+        ws: true, // proxy the task-chat WebSocket too
       },
     },
   },

@@ -143,3 +143,12 @@ export const api = {
 export function apiUrl(path: string): string {
   return `${BASE_URL}${path}`;
 }
+
+/** ws:// (or wss://) URL for a backend path, honouring VITE_API_BASE. */
+export function wsUrl(path: string): string {
+  if (BASE_URL.startsWith("http")) {
+    return `${BASE_URL.replace(/^http/, "ws")}${path}`;
+  }
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}${BASE_URL}${path}`;
+}

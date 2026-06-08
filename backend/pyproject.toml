@@ -33,8 +33,9 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.15.15",
-    "mypy>=1.10.0",
+    "mypy>=1.13.0",
     "pip-audit>=2.7.0",
+    "pre-commit>=3.0.0",
 ]
 
 [build-system]
@@ -62,6 +63,7 @@ extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.UploadFile"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+mypy_path = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

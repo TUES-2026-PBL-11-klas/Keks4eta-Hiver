@@ -14,6 +14,7 @@ import {
   type Escrow,
 } from "@/lib/services";
 import { budgetLabel } from "@/lib/format";
+import { tokens, wsUrl } from "@/lib/api";
 import { VERTICAL_ICON } from "@/components/verticalIcons";
 import { Avatar, Badge, Button, Card, EmptyState, Spinner, Stars } from "@/components/ui";
 import { Modal } from "@/components/Modal";
@@ -109,13 +110,31 @@ export default function TaskDetail() {
     }
   }, [canChat, id]);
 
-  // Poll the thread every 10s while the chat is open.
+  // Poll the thread every 10s while the chat is open (fallback + reconciler).
   useEffect(() => {
     if (!canChat) return;
     void loadMessages();
     const t = window.setInterval(loadMessages, 10000);
     return () => window.clearInterval(t);
   }, [canChat, loadMessages]);
+
+  // Live updates over WebSocket — sending still goes through REST, which
+  // broadcasts to this socket; we just append what arrives (deduped by id).
+  useEffect(() => {
+    if (!canChat || !id || !tokens.access) return;
+    const ws = new WebSocket(wsUrl(`/tasks/${id}/ws?token=${tokens.access}`));
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data) as ChatMessage;
+        setMessages((prev) =>
+          prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
+        );
+      } catch {
+        /* ignore malformed frames */
+      }
+    };
+    return () => ws.close();
+  }, [canChat, id]);
 
   // Keep the chat scrolled to the newest message.
   useEffect(() => {

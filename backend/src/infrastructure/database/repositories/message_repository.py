@@ -48,15 +48,18 @@ class PostgresMessageRepository(IMessageRepository):
         return [_to_domain(m) for m in result.scalars()]
 
     async def mark_read_for_reader(self, task_id: str, reader_id: str) -> int:
-        result = cast(CursorResult[None], await self._session.execute(
-            update(MessageModel)
-            .where(
-                MessageModel.task_id == task_id,
-                MessageModel.sender_id != reader_id,
-                MessageModel.is_read.is_(False),
-            )
-            .values(is_read=True)
-        ))
+        result = cast(
+            CursorResult[None],
+            await self._session.execute(
+                update(MessageModel)
+                .where(
+                    MessageModel.task_id == task_id,
+                    MessageModel.sender_id != reader_id,
+                    MessageModel.is_read.is_(False),
+                )
+                .values(is_read=True)
+            ),
+        )
         await self._session.flush()
         return result.rowcount
 
