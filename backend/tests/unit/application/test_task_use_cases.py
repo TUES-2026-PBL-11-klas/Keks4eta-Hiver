@@ -22,7 +22,10 @@ from src.application.use_cases.tasks.complete_task_use_case import (
 )
 from src.application.use_cases.tasks.create_task_use_case import CreateTaskUseCase
 from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
-from src.application.use_cases.tasks.list_tasks_use_case import ListClientTasksUseCase
+from src.application.use_cases.tasks.list_tasks_use_case import (
+    ListAssignedTasksUseCase,
+    ListClientTasksUseCase,
+)
 from src.application.use_cases.tasks.start_task_use_case import StartTaskUseCase
 from src.domain.entities.task import Task, TaskStatus
 from src.domain.entities.user import Client
@@ -80,6 +83,10 @@ class FakeTaskRepo:
 
     async def find_by_client(self, client_id: str, page: int = 1, page_size: int = 20):
         items = [t for t in self.saved if t.client_id == client_id]
+        return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
+
+    async def find_by_hiver(self, hiver_id: str, page: int = 1, page_size: int = 20):
+        items = [t for t in self.saved if t.hiver_id == hiver_id]
         return PaginatedResult(items=items, total=len(items), page=page, page_size=page_size)
 
     async def find_nearby(self, location, radius_km, vertical=None):
@@ -185,5 +192,17 @@ class TestListClientTasksUseCase:
         tasks = [make_task(f"t-{i}") for i in range(3)]
         task_repo = FakeTaskRepo(tasks)
         result = await ListClientTasksUseCase(task_repo).execute("c-1")
+        assert result.total == 3
+        assert len(result.items) == 3
+
+
+class TestListAssignedTasksUseCase:
+    async def test_returns_only_tasks_assigned_to_hiver(self):
+        tasks = [make_task(f"t-{i}") for i in range(3)]
+        for t in tasks:
+            t.hiver_id = "h-1"
+        tasks.append(make_task("t-other"))  # unassigned — must be excluded
+        task_repo = FakeTaskRepo(tasks)
+        result = await ListAssignedTasksUseCase(task_repo).execute("h-1")
         assert result.total == 3
         assert len(result.items) == 3

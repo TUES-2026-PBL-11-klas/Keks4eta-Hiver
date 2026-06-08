@@ -18,15 +18,23 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, refresh } = useAuth();
   const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  const [assigned, setAssigned] = useState<TaskSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(!!user?.is_available_now);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
-    taskService
-      .myTasks(1, 50)
-      .then((res) => active && setTasks(res.items))
+    const empty = { items: [] as TaskSummary[] };
+    Promise.all([
+      taskService.myTasks(1, 50).catch(() => empty), // tasks I posted as a client
+      taskService.assignedTasks(1, 50).catch(() => empty), // jobs I'm doing as a hiver
+    ])
+      .then(([mine, jobs]) => {
+        if (!active) return;
+        setTasks(mine.items);
+        setAssigned(jobs.items);
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -115,6 +123,19 @@ export default function Dashboard() {
           </label>
         </div>
       </Card>
+
+      {assigned.length > 0 && (
+        <>
+          <h2 className={s.sectionTitle}>Jobs you're doing</h2>
+          <div className={s.grid}>
+            {assigned.map((t, i) => (
+              <Reveal key={t.id} delay={Math.min(i, 6) * 0.04}>
+                <TaskCard task={t} />
+              </Reveal>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className={s.sectionTitle}>Your tasks</h2>
       {loading ? (

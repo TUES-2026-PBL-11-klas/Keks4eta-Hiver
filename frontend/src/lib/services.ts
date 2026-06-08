@@ -62,6 +62,9 @@ export const taskService = {
   create: (body: CreateTaskBody) => api.post<TaskDetail>("/tasks", body),
   myTasks: (page = 1, page_size = 20) =>
     api.get<Paginated<TaskSummary>>(`/tasks${qs({ page, page_size })}`),
+  // Tasks the current user is doing as a hiver (assigned to them).
+  assignedTasks: (page = 1, page_size = 20) =>
+    api.get<Paginated<TaskSummary>>(`/tasks/assigned${qs({ page, page_size })}`),
   start: (id: string) => api.post<TaskDetail>(`/tasks/${id}/start`),
   complete: (id: string) => api.post<TaskDetail>(`/tasks/${id}/complete`),
   cancel: (id: string) => api.post<TaskDetail>(`/tasks/${id}/cancel`),

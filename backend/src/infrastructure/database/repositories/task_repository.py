@@ -228,6 +228,29 @@ class PostgresTaskRepository(ITaskRepository):
         items = [_model_to_domain(m, coords) for m in models]
         return PaginatedResult(items=items, total=total, page=page, page_size=page_size)
 
+    async def find_by_hiver(
+        self, hiver_id: str, page: int = 1, page_size: int = 20
+    ) -> PaginatedResult[Task]:
+        """Tasks assigned to a hiver (the jobs they're doing/have done)."""
+        count_result = await self._session.execute(
+            select(func.count())
+            .select_from(TaskModel)
+            .where(TaskModel.hiver_id == hiver_id)
+        )
+        total = count_result.scalar_one()
+
+        result = await self._session.execute(
+            select(TaskModel)
+            .where(TaskModel.hiver_id == hiver_id)
+            .order_by(TaskModel.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        models = list(result.scalars())
+        coords = await self._coords_for([m.id for m in models])
+        items = [_model_to_domain(m, coords) for m in models]
+        return PaginatedResult(items=items, total=total, page=page, page_size=page_size)
+
     async def save(self, task: Task) -> Task:
         model = await self._session.get(TaskModel, task.id)
         if model is None:

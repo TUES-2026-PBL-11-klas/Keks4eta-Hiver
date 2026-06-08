@@ -353,7 +353,8 @@ earnings past it.
 | POST | /auth/register | None | Sign up as client or hiver — **rate-limited 5/min/IP** (slowapi) |
 | POST | /auth/login | None | Get access + refresh tokens — **rate-limited 10/min/IP** |
 | POST | /tasks | Client JWT | Post a new task |
-| GET | /tasks | Client JWT | List my tasks (paginated) |
+| GET | /tasks | Client JWT | List tasks I posted (paginated) |
+| GET | /tasks/assigned | Hiver JWT | List tasks assigned to me — the jobs I'm doing (drives the dashboard "Jobs you're doing" section) |
 | GET | /tasks/search | None | Public search — vertical / status / urgency / budget / free-text `q` / PostGIS `lat,lng,radius_km` / `sort` (carries lat,lng for map pins) |
 | GET | /tasks/{id} | None | Get task details |
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |

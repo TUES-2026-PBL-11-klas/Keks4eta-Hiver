@@ -166,7 +166,8 @@ npm run dev                     # http://localhost:5173
 | PATCH  | `/users/me` | Auth | Edit own profile (full_name, phone, bio, skills, work_radius_km, lat/lng + display) — partial |
 | POST   | `/users/me/avatar` | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | POST   | `/tasks` | Client | Post a task |
-| GET    | `/tasks` | Client | List my tasks (paginated) |
+| GET    | `/tasks` | Client | List tasks I posted (paginated) |
+| GET    | `/tasks/assigned` | Hiver | List tasks assigned to me (jobs I'm doing) |
 | GET    | `/tasks/search` | – | Public search: `vertical, status, is_urgent, min_budget, max_budget, q` (free-text), `lat/lng/radius_km` (PostGIS), `sort=recent\|distance\|budget` — results carry `latitude/longitude` for map pins |
 | GET    | `/tasks/{id}` | – | Task details |
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
