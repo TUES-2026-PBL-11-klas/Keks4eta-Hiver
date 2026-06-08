@@ -12,6 +12,71 @@ database** (no local Postgres needed), and (2) what you must provision to turn e
 
 ---
 
+## 0. Get every key, step by step (and where to paste it)
+
+Two env files hold secrets — neither is committed:
+- **root `.env`** (backend) — copy from `.env.example` once: `cp .env.example .env`
+- **`frontend/.env`** (browser) — copy from `frontend/.env.example`: `cp frontend/.env.example frontend/.env`
+
+After editing `.env`, **restart the backend**; after editing `frontend/.env`, **restart `npm run dev`**
+(Vite only reads env vars at startup).
+
+### A. Google sign-in — `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` → root `.env`
+1. Go to <https://console.cloud.google.com/> → create/select a project (top bar).
+2. **APIs & Services → OAuth consent screen** → *External* → fill app name + your email → **Save**.
+   Under *Test users*, **Add** the Google accounts you'll log in with (Dev mode needs this).
+3. **APIs & Services → Credentials → + Create credentials → OAuth client ID** → Application type
+   **Web application**.
+4. Under **Authorized redirect URIs → Add URI**, paste exactly:
+   `http://localhost:8000/api/v1/auth/oauth/google/callback` → **Create**.
+5. Copy the **Client ID** and **Client secret** from the dialog into root `.env`:
+   ```
+   GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=...
+   ```
+
+### B. Google Maps + Places — `VITE_GOOGLE_MAPS_KEY` → `frontend/.env`
+1. Same Google Cloud project → **APIs & Services → Library** → enable **Maps JavaScript API**
+   *and* **Places API** (search each, click *Enable*).
+2. **Billing → Link a billing account** (a card is required even though a school-demo stays in the
+   free tier and won't be charged).
+3. **APIs & Services → Credentials → + Create credentials → API key**. Click the new key → **Edit**:
+   - *Application restrictions* → **HTTP referrers** → add `http://localhost:5173/*` (and your prod URL).
+   - *API restrictions* → **Restrict key** → tick **Maps JavaScript API** + **Places API** → **Save**.
+4. Paste into `frontend/.env`:
+   ```
+   VITE_GOOGLE_MAPS_KEY=AIza...
+   ```
+   (No key? The map falls back to free OpenStreetMap and the location field becomes a plain input.)
+
+### C. Facebook sign-in — `FACEBOOK_CLIENT_ID` + `FACEBOOK_CLIENT_SECRET` → root `.env`
+1. <https://developers.facebook.com/apps> → **Create app** → use case *Authenticate and request data
+   from users with Facebook Login* → finish.
+2. In the app: **Add product → Facebook Login → Set up** (Web).
+3. **Facebook Login → Settings → Valid OAuth Redirect URIs**, paste:
+   `http://localhost:8000/api/v1/auth/oauth/facebook/callback` → **Save changes**.
+4. **App settings → Basic**: copy **App ID** → `FACEBOOK_CLIENT_ID`, **App secret** (Show) →
+   `FACEBOOK_CLIENT_SECRET` in root `.env`. Keep the app in **Development** mode and add yourselves
+   under **App roles → Roles → Testers** (works without Meta review).
+
+### D. Supabase Storage (task photos) — `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` → root `.env`
+1. Supabase dashboard → **Storage → New bucket** → name **`task-images`** → tick **Public** → create.
+2. **Project Settings → API**: copy **Project URL** → `SUPABASE_URL`, and the **`service_role`** key
+   (under *Project API keys*, click reveal) → `SUPABASE_SERVICE_KEY` in root `.env`.
+   > The `service_role` key bypasses RLS — keep it server-side only (it lives in the backend `.env`, never in `frontend/.env`).
+
+### E. JWT signing secret — `JWT_SECRET_KEY` → root `.env`
+Run `python -c "import secrets;print(secrets.token_hex(32))"` and paste the output:
+```
+JWT_SECRET_KEY=<64-hex-chars>
+```
+
+### Not needed for the demo
+`STRIPE_*` stay dummy (escrow uses a mock adapter), `REDIS_URL` is already set for local Docker,
+`GOOGLE_MAPS_API_KEY` (backend) and `FIREBASE_CREDENTIALS_JSON` stay blank.
+
+---
+
 ## 1. Shared cloud database (do this first)
 
 Goal: one Postgres everyone connects to, instead of a container per laptop.
@@ -75,9 +140,12 @@ Production hardening already in place / worth setting:
   add those redirect URIs in the Google/Facebook consoles.
 - A Kubernetes Helm chart + Terraform skeleton exist under `infra/` for the K8s target.
 
-> **Env + GitHub-secrets checklist:** the full list of which secret goes in `.env` vs the repo's
-> GitHub Actions secrets (for deploy) lives in [`HANDOFF.md`](./HANDOFF.md). CI (tests/lint) needs
-> none of them; only the deploy workflow does.
+**GitHub Actions secrets (only for the CD deploy workflow — CI for tests/lint needs none):** add
+under *repo → Settings → Secrets and variables → Actions* the same runtime values you put in `.env`:
+`DATABASE_URL`, `JWT_SECRET_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_CLIENT_ID`,
+`FACEBOOK_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `VITE_GOOGLE_MAPS_KEY`, `REDIS_URL`,
+`OAUTH_REDIRECT_BASE_URL`, `FRONTEND_URL`, `CORS_ORIGINS` — plus `REGISTRY_USER`/`REGISTRY_PASSWORD`
+for the image push. Add the **production** redirect URIs in the Google/Facebook consoles too.
 
 ---
 
@@ -93,9 +161,8 @@ Production hardening already in place / worth setting:
 | **Firebase** | Push notifications | ❌ **Interface only** (in-app notifications work; FCM does not) | Needs adapter + device tokens (§3.5). |
 
 ### 3.1 Google/Facebook OAuth (ready)
-Already works — just provision credentials. See the **Social login** section of [README.md](../README.md):
-create the OAuth apps, add the callback URIs, and set `GOOGLE_CLIENT_ID/SECRET`,
-`FACEBOOK_CLIENT_ID/SECRET` in `.env`. Restart the backend.
+Already works — just provision credentials. Follow [§0.A](#a-google-sign-in--google_client_id--google_client_secret--root-env)
+and [§0.C](#c-facebook-sign-in--facebook_client_id--facebook_client_secret--root-env), then restart the backend.
 
 ### 3.2 Escrow (already works — Stripe optional)
 Escrow is **functional end-to-end on a mock payment adapter**: accepting an offer holds funds,

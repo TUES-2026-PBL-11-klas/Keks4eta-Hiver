@@ -36,7 +36,8 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ✅ Done — 294 unit tests + use-case + HTTP integration tests (green); CI (ruff/mypy/pytest≥80%/pip-audit/trufflehog/docker); Prometheus `/metrics` wired + Grafana datasource provisioned + Helm chart complete | — |
 | 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace Completion | 🔄 In progress — functional escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: fuller test coverage & polish | — |
+| 7 | Marketplace Completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat + inbox ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, location) ✅, favorites ✅, task promotion (pay-to-feature) ✅ | — |
+| 8 | Cloud Deploy | 🔄 In progress — multi-stage Docker + Helm chart + CD workflow written; needs a cluster + registry/secrets to actually deploy | — |
 
 ---
 
