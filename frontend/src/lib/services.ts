@@ -73,6 +73,8 @@ export const taskService = {
     fd.append("file", file);
     return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
   },
+  removeImage: (id: string, url: string) =>
+    api.delete<TaskDetail>(`/tasks/${id}/images?url=${encodeURIComponent(url)}`),
   boost: (id: string) =>
     api.post<{ task_id: string; featured_until: string; price_bgn: number }>(
       `/tasks/${id}/boost`,

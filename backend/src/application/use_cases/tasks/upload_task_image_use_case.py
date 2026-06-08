@@ -44,3 +44,41 @@ class UploadTaskImageUseCase:
         task.image_urls.append(url)
         await self._task_repo.save(task)
         return await GetTaskUseCase(self._task_repo).execute(task_id)
+
+
+def _key_from_url(url: str) -> str | None:
+    """Extract the storage object key from a public Supabase URL (…/public/<bucket>/<key>)."""
+    marker = f"/public/{BUCKET}/"
+    i = url.find(marker)
+    return url[i + len(marker) :] if i != -1 else None
+
+
+class DeleteTaskImageUseCase:
+    """Owner removes one image from their task and (best-effort) from storage."""
+
+    def __init__(self, task_repo: ITaskRepository, storage_port: IStoragePort | None) -> None:
+        self._task_repo = task_repo
+        self._storage = storage_port
+
+    async def execute(self, task_id: str, client_id: str, url: str) -> TaskDetailResponse:
+        task = await self._task_repo.find_by_id(task_id)
+        if task is None:
+            raise TaskNotFoundError(task_id)
+        if task.client_id != client_id:
+            raise UnauthorizedActionError("remove images from this task")
+        if url not in task.image_urls:
+            raise BusinessRuleViolationError("image not found on this task", "IMAGE_NOT_FOUND")
+
+        task.image_urls.remove(url)
+        await self._task_repo.save(task)
+
+        # Best-effort storage cleanup — the image is already off the task, so a failed
+        # delete only leaves an orphaned object, which must not fail the user's action.
+        key = _key_from_url(url)
+        if self._storage is not None and key:
+            try:
+                await self._storage.delete(BUCKET, key)
+            except Exception:  # noqa: BLE001 — orphan cleanup is non-critical
+                pass
+
+        return await GetTaskUseCase(self._task_repo).execute(task_id)

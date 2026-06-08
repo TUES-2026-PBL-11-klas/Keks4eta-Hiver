@@ -198,6 +198,17 @@ export default function TaskDetail() {
     }
   }
 
+  async function removeImage(url: string) {
+    if (!id) return;
+    setActionError("");
+    try {
+      await taskService.removeImage(id, url);
+      await load();
+    } catch (err) {
+      setActionError((err as Error).message);
+    }
+  }
+
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setActionError("");
@@ -322,6 +333,20 @@ export default function TaskDetail() {
                   {task.image_urls.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer" className={s.thumb}>
                       <img src={url} alt="Task" loading="lazy" />
+                      {isOwner && (
+                        <button
+                          type="button"
+                          aria-label="Remove photo"
+                          className={s.thumbRemove}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void removeImage(url);
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
                     </a>
                   ))}
                 </div>

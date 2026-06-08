@@ -27,6 +27,7 @@ from src.application.use_cases.tasks.list_tasks_use_case import (
 from src.application.use_cases.tasks.search_tasks_use_case import SearchTasksUseCase
 from src.application.use_cases.tasks.start_task_use_case import StartTaskUseCase
 from src.application.use_cases.tasks.upload_task_image_use_case import (
+    DeleteTaskImageUseCase,
     UploadTaskImageUseCase,
 )
 from src.domain.errors.domain_errors import StorageNotConfiguredError
@@ -210,6 +211,20 @@ async def upload_task_image(
         data=data,
         content_type=file.content_type or "",
     )
+
+
+@router.delete("/{task_id}/images", response_model=TaskDetailResponse)
+async def delete_task_image(
+    task_id: str,
+    session: SessionDep,
+    client: ClientDep,
+    url: str = Query(..., description="The exact image URL to remove from the task"),
+) -> TaskDetailResponse:
+    use_case = DeleteTaskImageUseCase(
+        task_repo=PostgresTaskRepository(session),
+        storage_port=get_storage_port(),
+    )
+    return await use_case.execute(task_id=task_id, client_id=client.id, url=url)
 
 
 @router.post(
