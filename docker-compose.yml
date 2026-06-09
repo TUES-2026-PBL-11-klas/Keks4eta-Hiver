@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.0
     volumes:
       - ./infra/prometheus:/etc/prometheus
     ports:
@@ -55,7 +55,7 @@ services:
     restart: unless-stopped
 
   alertmanager:
-    image: prom/alertmanager:latest
+    image: prom/alertmanager:v0.27.0
     volumes:
       - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     ports:
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.0.0
     volumes:
       # Auto-provisions the Prometheus datasource + dashboards on startup.
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro

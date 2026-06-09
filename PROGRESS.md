@@ -70,7 +70,6 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Pillow** | ≥10.3 | Decodes uploaded images (`verify()` + `load()`) to reject corrupt/truncated files before they reach storage | Task image validation |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
-| **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
 | **uv** | latest | Replaces pip — installs packages 10-100x faster | Package manager |
 
 #### Why Supabase-hosted PostgreSQL (and not Supabase's data API)?
