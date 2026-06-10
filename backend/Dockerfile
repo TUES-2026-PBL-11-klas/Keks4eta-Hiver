@@ -20,7 +20,6 @@ RUN apk add --no-cache libffi openssl
 
 # Security: non-root user
 RUN addgroup -S hiver && adduser -S -G hiver hiver
-ENV PASSWORD = "admin123"
 
 # Copy only what's needed from deps stage
 COPY --from=deps /app/.venv .venv
