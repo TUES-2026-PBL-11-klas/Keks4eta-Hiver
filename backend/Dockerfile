@@ -1,5 +1,5 @@
 # Stage 1: Install dependencies
-FROM python:3.13-alpine AS deps
+FROM python:3.14-alpine AS deps
 WORKDIR /app
 
 # Build tools needed for C extensions (cryptography, argon2-cffi, asyncpg, dependency-injector)
@@ -12,7 +12,7 @@ RUN uv sync --no-dev && \
     find /app/.venv -name "*.so" -exec strip --strip-debug {} + 2>/dev/null || true
 
 # Stage 2: Production image — minimal
-FROM python:3.13-alpine AS production
+FROM python:3.14-alpine AS production
 WORKDIR /app
 
 # Runtime libraries only (no build tools)
