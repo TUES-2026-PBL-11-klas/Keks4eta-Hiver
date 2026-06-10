@@ -20,10 +20,14 @@ from src.application.use_cases.tasks.complete_task_use_case import (
 )
 from src.application.use_cases.tasks.create_task_use_case import CreateTaskUseCase
 from src.application.use_cases.tasks.get_task_use_case import GetTaskUseCase
-from src.application.use_cases.tasks.list_tasks_use_case import ListClientTasksUseCase
+from src.application.use_cases.tasks.list_tasks_use_case import (
+    ListAssignedTasksUseCase,
+    ListClientTasksUseCase,
+)
 from src.application.use_cases.tasks.search_tasks_use_case import SearchTasksUseCase
 from src.application.use_cases.tasks.start_task_use_case import StartTaskUseCase
 from src.application.use_cases.tasks.upload_task_image_use_case import (
+    DeleteTaskImageUseCase,
     UploadTaskImageUseCase,
 )
 from src.domain.errors.domain_errors import StorageNotConfiguredError
@@ -112,6 +116,18 @@ async def list_my_tasks(
     return await use_case.execute(client_id=client.id, page=page, page_size=page_size)
 
 
+@router.get("/assigned", response_model=PaginatedResult[TaskSummaryResponse])
+async def list_assigned_tasks(
+    session: SessionDep,
+    hiver: HiverDep,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+) -> PaginatedResult[TaskSummaryResponse]:
+    """Tasks the current user is doing as a hiver (assigned to them)."""
+    use_case = ListAssignedTasksUseCase(task_repo=PostgresTaskRepository(session))
+    return await use_case.execute(hiver_id=hiver.id, page=page, page_size=page_size)
+
+
 @router.get("/{task_id}", response_model=TaskDetailResponse)
 async def get_task(
     task_id: str,
@@ -195,6 +211,20 @@ async def upload_task_image(
         data=data,
         content_type=file.content_type or "",
     )
+
+
+@router.delete("/{task_id}/images", response_model=TaskDetailResponse)
+async def delete_task_image(
+    task_id: str,
+    session: SessionDep,
+    client: ClientDep,
+    url: str = Query(..., description="The exact image URL to remove from the task"),
+) -> TaskDetailResponse:
+    use_case = DeleteTaskImageUseCase(
+        task_repo=PostgresTaskRepository(session),
+        storage_port=get_storage_port(),
+    )
+    return await use_case.execute(task_id=task_id, client_id=client.id, url=url)
 
 
 @router.post(

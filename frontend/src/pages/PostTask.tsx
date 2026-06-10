@@ -10,7 +10,8 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import type { Vertical } from "@/types";
 import s from "./PostTask.module.css";
 
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+// Treat an empty/whitespace key as "no key" so a blank VITE_GOOGLE_MAPS_KEY falls back to a plain input.
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY?.trim() || undefined;
 
 // Vertical-specific "smart" questions. The keyed answers the backend *requires*
 // per vertical (home→property_type, learn→subject, tech→device_type) live here;

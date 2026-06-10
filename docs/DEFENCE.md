@@ -86,7 +86,7 @@ the domain become structured JSON in `error_handler.py`.
 | ORM | **SQLAlchemy 2.0 async** + **asyncpg** | Mature, typed, async; asyncpg is the fastest Postgres driver. |
 | Migrations | **Alembic** (22 chained) | Versioned, reversible schema history — required for the БД grade. |
 | Database | **PostgreSQL 16 + PostGIS** | Relational integrity + geospatial (`ST_DWithin`) for "tasks/hivers near me". |
-| Cache / limits | **Redis 7** | Rate-limit counters + session-ish needs. |
+| Cache / limits | **Redis 7** | Backs the auth rate limiter (slowapi `storage_uri`) so counters are shared across instances; also the `/health` probe. In-memory fallback when Redis is down. |
 | Auth | **JWT (python-jose)** + **pwdlib** (Argon2, bcrypt fallback) | Stateless, scalable tokens; Argon2 is the modern password hash (pwdlib replaced passlib, which failed to import). Social login via **Authlib** (Google/Facebook). |
 | Payments | **Adapter** — `MockPaymentAdapter` default, `StripeAdapter` swappable | Demo works with zero Stripe account; one factory swaps to real Stripe. |
 | Storage | **Supabase Storage** + **Pillow** | Real object storage for task photos + avatars; Pillow rejects corrupt/truncated uploads. |
@@ -216,12 +216,13 @@ the domain become structured JSON in `error_handler.py`.
 - **CD doesn't deploy yet** — the workflow + Helm chart are complete, but actually shipping needs a
   Kubernetes cluster, registry secrets (`REGISTRY_USER`/`REGISTRY_PASSWORD`), a cluster-auth step in
   `cd.yml`, and a `hiver-secrets` Secret. CI (the graded part) runs on PRs.
-- **Grafana dashboards** are not pre-built — the datasource is provisioned; panels are added in the
-  UI. Prometheus + `/metrics` + alerts are real.
+- **Grafana** ships a provisioned dashboard *"Hiver — Backend Overview"* (datasource + dashboard
+  auto-loaded on startup: up, request rate, error rate %, p50/p95/p99 latency, status-class
+  breakdown, top endpoints). Prometheus + `/metrics` + alerts are real.
 - **Stripe & push (FCM)** are scaffolded behind ports; the working defaults are the mock payment
   adapter and in-app notifications.
 - **Terraform** is an unapplied skeleton.
-- **Chat** is REST polling (10 s), not WebSockets — fine for the demo, a known future upgrade.
+- **Chat** uses WebSockets for live updates, with REST polling (10 s) as a reconnect fallback.
 - **Prometheus scrape vs host-run backend** — Prometheus targets the compose `backend` service, so
   to see metrics flowing run the backend *in compose* (`docker compose up backend`), not only the
   host dev server.

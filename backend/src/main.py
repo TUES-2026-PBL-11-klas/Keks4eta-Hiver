@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from typing import Any
 
+import redis.asyncio as redis_async
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -33,6 +34,10 @@ from src.infrastructure.http.routers import (
 )
 from src.shared.config import settings
 
+# Async Redis client for the /health connectivity probe. Lazy — only connects on
+# first use; a short timeout keeps /health fast even if Redis is down.
+redis_client = redis_async.from_url(settings.redis_url, socket_connect_timeout=1)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -49,6 +54,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await storage.ensure_bucket(TASK_IMAGES_BUCKET, public=True)
     yield
     await engine.dispose()
+    with suppress(Exception):
+        await redis_client.aclose()
 
 
 app = FastAPI(
@@ -101,4 +108,8 @@ Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, Any]:
-    return {"status": "ok", "version": "0.1.0"}
+    """Liveness + Redis connectivity (the cache/rate-limit store)."""
+    redis_ok = False
+    with suppress(Exception):
+        redis_ok = bool(await redis_client.ping())
+    return {"status": "ok", "version": "0.1.0", "redis": "up" if redis_ok else "down"}

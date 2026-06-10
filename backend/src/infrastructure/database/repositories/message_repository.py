@@ -71,8 +71,11 @@ class PostgresMessageRepository(IMessageRepository):
             text(
                 """
                 WITH my_tasks AS (
-                    SELECT id FROM tasks
-                    WHERE client_id = :uid OR hiver_id = :uid
+                    -- A chat exists once a hiver is assigned; show every such task
+                    -- even before the first message so it's reachable from the inbox.
+                    SELECT id, updated_at FROM tasks
+                    WHERE (client_id = :uid OR hiver_id = :uid)
+                      AND hiver_id IS NOT NULL
                 ),
                 latest AS (
                     SELECT m.task_id, m.content, m.created_at,
@@ -82,16 +85,16 @@ class PostgresMessageRepository(IMessageRepository):
                     FROM messages m
                     WHERE m.task_id IN (SELECT id FROM my_tasks)
                 )
-                SELECT l.task_id AS task_id,
-                       l.content AS last_content,
-                       l.created_at AS last_at,
+                SELECT t.id AS task_id,
+                       COALESCE(l.content, '') AS last_content,
+                       COALESCE(l.created_at, t.updated_at) AS last_at,
                        (SELECT COUNT(*) FROM messages m2
-                        WHERE m2.task_id = l.task_id
+                        WHERE m2.task_id = t.id
                           AND m2.sender_id <> :uid
                           AND m2.is_read = false) AS unread
-                FROM latest l
-                WHERE l.rn = 1
-                ORDER BY l.created_at DESC
+                FROM my_tasks t
+                LEFT JOIN latest l ON l.task_id = t.id AND l.rn = 1
+                ORDER BY last_at DESC
                 """
             ),
             {"uid": user_id},

@@ -12,7 +12,8 @@ import s from "./NearbyHivers.module.css";
 
 // Default to central Sofia until the user shares their location.
 const DEFAULT_COORDS = { lat: 42.6977, lng: 23.3219 };
-const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+// Treat an empty/whitespace key as "no key" so a blank VITE_GOOGLE_MAPS_KEY falls back to OSM.
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY?.trim() || undefined;
 const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
 // Pans the map whenever the search coordinates change (e.g. "Use my location").

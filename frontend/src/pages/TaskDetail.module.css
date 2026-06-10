@@ -129,12 +129,31 @@
 }
 .thumb {
   display: block;
+  position: relative;
   aspect-ratio: 1;
   border-radius: var(--r-md, 12px);
   overflow: hidden;
   border: 1px solid var(--line);
   background: var(--card-2);
 }
+.thumbRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thumbRemove:hover { background: rgba(0, 0, 0, 0.8); }
 .thumb img {
   width: 100%;
   height: 100%;

@@ -62,6 +62,9 @@ export const taskService = {
   create: (body: CreateTaskBody) => api.post<TaskDetail>("/tasks", body),
   myTasks: (page = 1, page_size = 20) =>
     api.get<Paginated<TaskSummary>>(`/tasks${qs({ page, page_size })}`),
+  // Tasks the current user is doing as a hiver (assigned to them).
+  assignedTasks: (page = 1, page_size = 20) =>
+    api.get<Paginated<TaskSummary>>(`/tasks/assigned${qs({ page, page_size })}`),
   start: (id: string) => api.post<TaskDetail>(`/tasks/${id}/start`),
   complete: (id: string) => api.post<TaskDetail>(`/tasks/${id}/complete`),
   cancel: (id: string) => api.post<TaskDetail>(`/tasks/${id}/cancel`),
@@ -70,6 +73,8 @@ export const taskService = {
     fd.append("file", file);
     return api.upload<TaskDetail>(`/tasks/${id}/images`, fd);
   },
+  removeImage: (id: string, url: string) =>
+    api.delete<TaskDetail>(`/tasks/${id}/images?url=${encodeURIComponent(url)}`),
   boost: (id: string) =>
     api.post<{ task_id: string; featured_until: string; price_bgn: number }>(
       `/tasks/${id}/boost`,

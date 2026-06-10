@@ -21,6 +21,7 @@ from src.application.use_cases.boosts.boost_use_cases import (
     GetMyBoostUseCase,
 )
 from src.application.use_cases.tasks.upload_task_image_use_case import (
+    DeleteTaskImageUseCase,
     UploadTaskImageUseCase,
 )
 from src.application.use_cases.users.find_hivers_nearby_use_case import (
@@ -313,3 +314,35 @@ class TestUploadTaskImageUseCase:
             "t-1", "c-1", _valid_image_bytes(), "image/webp"
         )
         assert result.id == "t-1"
+
+
+class TestDeleteTaskImageUseCase:
+    def _make_use_case(self, task: Task | None = None) -> DeleteTaskImageUseCase:
+        tasks = [task] if task else []
+        return DeleteTaskImageUseCase(
+            task_repo=FakeTaskRepo(tasks), storage_port=FakeStoragePort()
+        )
+
+    async def test_task_not_found_raises(self):
+        with pytest.raises(TaskNotFoundError):
+            await self._make_use_case().execute("t-1", "c-1", "http://x/img.jpg")
+
+    async def test_unauthorized_raises(self):
+        task = make_task()
+        task.image_urls = ["http://x/public/task-images/t-1/a.jpg"]
+        with pytest.raises(UnauthorizedActionError):
+            await self._make_use_case(task).execute("t-1", "wrong", task.image_urls[0])
+
+    async def test_missing_image_raises(self):
+        task = make_task()
+        with pytest.raises(BusinessRuleViolationError):
+            await self._make_use_case(task).execute("t-1", "c-1", "http://x/not-here.jpg")
+
+    async def test_removes_image_and_returns_task(self):
+        task = make_task()
+        url = "http://x/storage/v1/object/public/task-images/t-1/a.jpg"
+        task.image_urls = [url, "http://x/keep.jpg"]
+        result = await self._make_use_case(task).execute("t-1", "c-1", url)
+        assert result.id == "t-1"
+        assert url not in task.image_urls
+        assert "http://x/keep.jpg" in task.image_urls

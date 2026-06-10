@@ -84,7 +84,7 @@ export default function Inbox() {
                   </div>
                   <span className={s.task}>{c.task_title}</span>
                   <span className={`${s.preview} ${c.unread > 0 ? s.unreadPreview : ""}`}>
-                    {c.last_message}
+                    {c.last_message || "No messages yet — say hello 👋"}
                   </span>
                 </div>
                 {c.unread > 0 && <span className={s.badge}>{c.unread}</span>}

@@ -178,7 +178,7 @@ export default function Profile() {
             <span>Photo, bio, skills & location</span>
           </span>
         </button>
-        <div className={s.tile}>
+        <div className={`${s.tile} ${s.tileStatic}`}>
           <span className={s.tileIcon}><ShieldIcon size={20} /></span>
           <span className={s.tileText}>
             <strong>Escrow protected</strong>

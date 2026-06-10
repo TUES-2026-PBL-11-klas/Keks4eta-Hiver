@@ -28,7 +28,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
 | Migrations | Alembic (22 chained) |
 | Database | PostgreSQL 16 + PostGIS |
-| Cache | Redis 7 |
+| Cache | Redis 7 — backs the auth rate limiter (slowapi storage) + `/health` probe; in-memory fallback when absent |
 | Auth | JWT (python-jose) + pwdlib (Argon2, bcrypt fallback); social login via Authlib (Google + Facebook) |
 | Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
 | Storage | Supabase Storage (task images + profile avatars); Pillow validates image integrity before upload |
@@ -166,7 +166,8 @@ npm run dev                     # http://localhost:5173
 | PATCH  | `/users/me` | Auth | Edit own profile (full_name, phone, bio, skills, work_radius_km, lat/lng + display) — partial |
 | POST   | `/users/me/avatar` | Auth | Upload a profile photo (Pillow-validated, ≤3 MB) → Supabase Storage |
 | POST   | `/tasks` | Client | Post a task |
-| GET    | `/tasks` | Client | List my tasks (paginated) |
+| GET    | `/tasks` | Client | List tasks I posted (paginated) |
+| GET    | `/tasks/assigned` | Hiver | List tasks assigned to me (jobs I'm doing) |
 | GET    | `/tasks/search` | – | Public search: `vertical, status, is_urgent, min_budget, max_budget, q` (free-text), `lat/lng/radius_km` (PostGIS), `sort=recent\|distance\|budget` — results carry `latitude/longitude` for map pins |
 | GET    | `/tasks/{id}` | – | Task details |
 | POST   | `/tasks/{id}/start` | Hiver | Hiver moves task accepted → in_progress |
@@ -223,7 +224,8 @@ admin/admin). The backend exposes **`/metrics`** (via `prometheus-fastapi-instru
 Prometheus scrapes the compose `backend` service, evaluates the rules in
 `infra/prometheus/alerts.yml`, and routes firing alerts to Alertmanager. Grafana auto-provisions
 the Prometheus datasource **and** a ready dashboard ("Hiver — Backend Overview": uptime, request
-rate, 5xx rate, p50/p95 latency). To see metrics flow, run the backend **as the compose service**
+rate, error-rate %, avg + p50/p95/p99 latency, status-class breakdown, top endpoints). To see
+metrics flow, run the backend **as the compose service**
 (`docker compose up backend`) so the `backend:8000` target resolves — the host-run dev server
 (Getting Started) is reachable at `localhost:8000` but not at the `backend` hostname Prometheus uses.
 

@@ -36,7 +36,8 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | 4 | API Layer | ✅ Done | `b0b0447` |
 | 5 | Tests + CI/CD + Observability | ✅ Done — 294 unit tests + use-case + HTTP integration tests (green); CI (ruff/mypy/pytest≥80%/pip-audit/trufflehog/docker); Prometheus `/metrics` wired + Grafana datasource provisioned + Helm chart complete | — |
 | 6 | Responsive Frontend + Social Login | ✅ Done — responsive web app, all endpoints wired, Google/Facebook OAuth | — |
-| 7 | Marketplace Completion | 🔄 In progress — functional escrow end-to-end ✅, in-app notifications (Observer/EventBus) ✅, shared Supabase DB + RLS ✅; remaining: fuller test coverage & polish | — |
+| 7 | Marketplace Completion | ✅ Done — escrow (mock adapter) ✅, in-app notifications (Observer/EventBus) ✅, task chat + inbox ✅, disputes ✅, visibility boosts ✅, Supabase Storage image upload ✅, shared Supabase DB + RLS ✅, Google Maps + Places (map pins + address autocomplete) ✅, unified accounts ✅, tasks-on-map search ✅, profile editing + settings (avatar, bio, skills, location) ✅, favorites ✅, task promotion (pay-to-feature) ✅ | — |
+| 8 | Cloud Deploy | 🔄 In progress — multi-stage Docker + Helm chart + CD workflow written; needs a cluster + registry/secrets to actually deploy | — |
 
 ---
 
@@ -56,7 +57,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Alembic** | ≥1.13 | Tracks and applies schema changes as versioned migrations — required for БД grade | Database migrations |
 | **PostgreSQL 16 + PostGIS** | external | Full relational DB + `ST_DWithin` geospatial queries for finding nearby hivers | Primary database |
 | **GeoAlchemy2** | ≥0.15 | Maps PostGIS `Geography(POINT)` columns to SQLAlchemy ORM models | Geo ORM columns |
-| **Redis 7** | external | Fast in-memory store for sessions and rate limiting | Cache layer |
+| **Redis 7** | external | In-memory store backing the auth **rate limiter** (slowapi/`limits` storage) so limits hold across instances; also the `/health` connectivity probe. Degrades to in-memory if absent | Cache / rate-limit store |
 | **python-jose** | ≥3.3 | Encodes and decodes JWT tokens | Auth token generation |
 | **pwdlib[argon2,bcrypt]** | ≥0.2 | Hashes passwords with Argon2 (bcrypt fallback for legacy hashes) — never stores plain text | Password security |
 | **Pillow** | ≥10.3 | Decodes uploaded images to reject corrupt/truncated files (task photos + avatars) before storage | Image validation |
@@ -69,7 +70,6 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Pillow** | ≥10.3 | Decodes uploaded images (`verify()` + `load()`) to reject corrupt/truncated files before they reach storage | Task image validation |
 | **structlog** | ≥24.0 | Structured JSON logging instead of plain print() | Observability |
 | **prometheus-fastapi-instrumentator** | ≥7.0 | Auto-instruments every FastAPI endpoint with Prometheus metrics | Monitoring |
-| **dependency-injector** | ≥4.41 | DI container library (currently using manual factory pattern instead) | Dependency wiring |
 | **uv** | latest | Replaces pip — installs packages 10-100x faster | Package manager |
 
 #### Why Supabase-hosted PostgreSQL (and not Supabase's data API)?
@@ -353,7 +353,8 @@ earnings past it.
 | POST | /auth/register | None | Sign up as client or hiver — **rate-limited 5/min/IP** (slowapi) |
 | POST | /auth/login | None | Get access + refresh tokens — **rate-limited 10/min/IP** |
 | POST | /tasks | Client JWT | Post a new task |
-| GET | /tasks | Client JWT | List my tasks (paginated) |
+| GET | /tasks | Client JWT | List tasks I posted (paginated) |
+| GET | /tasks/assigned | Hiver JWT | List tasks assigned to me — the jobs I'm doing (drives the dashboard "Jobs you're doing" section) |
 | GET | /tasks/search | None | Public search — vertical / status / urgency / budget / free-text `q` / PostGIS `lat,lng,radius_km` / `sort` (carries lat,lng for map pins) |
 | GET | /tasks/{id} | None | Get task details |
 | POST | /tasks/{id}/start | Hiver JWT | Move task accepted → in_progress |
