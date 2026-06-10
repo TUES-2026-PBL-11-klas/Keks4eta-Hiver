@@ -28,7 +28,7 @@ A two-sided task marketplace — clients post real-world tasks (cleaning, tutori
 | ORM | SQLAlchemy 2.0 (async) + asyncpg |
 | Migrations | Alembic (22 chained) |
 | Database | PostgreSQL 16 + PostGIS |
-| Cache | Redis 7 |
+| Cache | Redis 7 — backs the auth rate limiter (slowapi storage) + `/health` probe; in-memory fallback when absent |
 | Auth | JWT (python-jose) + pwdlib (Argon2, bcrypt fallback); social login via Authlib (Google + Facebook) |
 | Payments | Escrow via a **mock** payment adapter by default (swap to Stripe manual-capture via `payment_factory`) |
 | Storage | Supabase Storage (task images + profile avatars); Pillow validates image integrity before upload |

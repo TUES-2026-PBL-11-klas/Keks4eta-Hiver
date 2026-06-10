@@ -86,7 +86,7 @@ the domain become structured JSON in `error_handler.py`.
 | ORM | **SQLAlchemy 2.0 async** + **asyncpg** | Mature, typed, async; asyncpg is the fastest Postgres driver. |
 | Migrations | **Alembic** (22 chained) | Versioned, reversible schema history — required for the БД grade. |
 | Database | **PostgreSQL 16 + PostGIS** | Relational integrity + geospatial (`ST_DWithin`) for "tasks/hivers near me". |
-| Cache / limits | **Redis 7** | Rate-limit counters + session-ish needs. |
+| Cache / limits | **Redis 7** | Backs the auth rate limiter (slowapi `storage_uri`) so counters are shared across instances; also the `/health` probe. In-memory fallback when Redis is down. |
 | Auth | **JWT (python-jose)** + **pwdlib** (Argon2, bcrypt fallback) | Stateless, scalable tokens; Argon2 is the modern password hash (pwdlib replaced passlib, which failed to import). Social login via **Authlib** (Google/Facebook). |
 | Payments | **Adapter** — `MockPaymentAdapter` default, `StripeAdapter` swappable | Demo works with zero Stripe account; one factory swaps to real Stripe. |
 | Storage | **Supabase Storage** + **Pillow** | Real object storage for task photos + avatars; Pillow rejects corrupt/truncated uploads. |

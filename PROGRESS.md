@@ -57,7 +57,7 @@ Infrastructure (DB, Stripe, etc.) ← concrete implementations of domain interfa
 | **Alembic** | ≥1.13 | Tracks and applies schema changes as versioned migrations — required for БД grade | Database migrations |
 | **PostgreSQL 16 + PostGIS** | external | Full relational DB + `ST_DWithin` geospatial queries for finding nearby hivers | Primary database |
 | **GeoAlchemy2** | ≥0.15 | Maps PostGIS `Geography(POINT)` columns to SQLAlchemy ORM models | Geo ORM columns |
-| **Redis 7** | external | Fast in-memory store for sessions and rate limiting | Cache layer |
+| **Redis 7** | external | In-memory store backing the auth **rate limiter** (slowapi/`limits` storage) so limits hold across instances; also the `/health` connectivity probe. Degrades to in-memory if absent | Cache / rate-limit store |
 | **python-jose** | ≥3.3 | Encodes and decodes JWT tokens | Auth token generation |
 | **pwdlib[argon2,bcrypt]** | ≥0.2 | Hashes passwords with Argon2 (bcrypt fallback for legacy hashes) — never stores plain text | Password security |
 | **Pillow** | ≥10.3 | Decodes uploaded images to reject corrupt/truncated files (task photos + avatars) before storage | Image validation |
